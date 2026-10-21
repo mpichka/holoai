@@ -68,7 +68,7 @@ export class FileRepository {
         return await this.knex('files').where({ id }).first();
     }
 
-    async updateDescription(id: number, description: string): Promise<void> {
+    async setDescription(id: number, description: string): Promise<void> {
         await this.knex('files').where({ id }).update({ description });
     }
 

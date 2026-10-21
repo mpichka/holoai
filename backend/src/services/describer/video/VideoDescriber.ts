@@ -1,4 +1,5 @@
 import { Llama } from '../../../utils/llama';
+import { trimToFirstSeconds } from '../ffmpeg';
 import {
     VIDEO_CATEGORIES,
     VIDEO_CATEGORY_SYSTEM_PROMPT,
@@ -7,7 +8,6 @@ import {
     VIDEO_UNKNOWN_PROMPT,
     VIDEO_USER_PROMPT,
 } from './constants';
-import { trimToFirstSeconds } from '../ffmpeg';
 
 export class VideoDescriber {
     MAX_DURATION_IN_SECONDS = 60;

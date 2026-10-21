@@ -1,5 +1,4 @@
 import { spawn } from 'node:child_process';
-import type winston from 'winston';
 
 const MAX_INPUT_BYTES = 50 * 1024 * 1024; // 50MB
 
@@ -27,12 +26,7 @@ const formatOf = (mimeType: string): string | null => {
     return subtype ? FORMAT_BY_SUBTYPE[subtype] : null;
 };
 
-export async function runFfmpeg(
-    base64Data: string,
-    args: string[],
-    action: string,
-    logger?: winston.Logger,
-): Promise<string | null> {
+export async function runFfmpeg(base64Data: string, args: string[], action: string): Promise<string | null> {
     try {
         const input = Buffer.from(base64Data, 'base64');
 
@@ -62,20 +56,15 @@ export async function runFfmpeg(
 
         return output.toString('base64');
     } catch (err) {
-        logger?.warn(`Cannot ${action} file: ${err}`);
+        console.warn(`Cannot ${action} file: ${err}`);
         return null;
     }
 }
 
-export async function trimToFirstSeconds(
-    base64Data: string,
-    mimeType: string,
-    maxLength = 60,
-    logger?: winston.Logger,
-): Promise<string | null> {
+export async function trimToFirstSeconds(base64Data: string, mimeType: string, maxLength = 60): Promise<string | null> {
     const format = formatOf(mimeType);
     if (!format) {
-        logger?.warn(`Cannot trim file: unsupported mime type ${mimeType}`);
+        console.warn(`Cannot trim file: unsupported mime type ${mimeType}`);
         return null;
     }
 
@@ -96,10 +85,9 @@ export async function trimToFirstSeconds(
             'pipe:1',
         ],
         'trim',
-        logger,
     );
 }
 
-export function convertToMp3(base64Data: string, logger?: winston.Logger) {
-    return runFfmpeg(base64Data, ['-i', 'pipe:0', '-f', 'mp3', 'pipe:1'], 'convert to mp3', logger);
+export function convertToMp3(base64Data: string) {
+    return runFfmpeg(base64Data, ['-i', 'pipe:0', '-f', 'mp3', 'pipe:1'], 'convert to mp3');
 }

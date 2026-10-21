@@ -1,18 +1,19 @@
 import type winston from 'winston';
-import { Container } from '../../utils/di';
+import type { FileRecord, FileRepository } from '../../utils/db/repositories';
+import type { Container } from '../../utils/di';
+import type { TelegramBot } from '../../utils/tg';
 import { AudioDescriber } from './audio/AudioDescriber';
 import { MEDIA_KIND, type MediaKind } from './constants';
 import { ImageDescriber } from './image/ImageDescriber';
 import { VideoDescriber } from './video/VideoDescriber';
-import { FileRecord } from '../../utils/db/repositories';
 
 export class FileDescriber {
     imageDescriber;
     audioDescriber;
     videoDescriber;
     logger: winston.Logger;
-    files;
-    tg;
+    files: FileRepository;
+    tg: TelegramBot;
 
     constructor(container: Container) {
         this.imageDescriber = new ImageDescriber(container.Llama);
@@ -72,9 +73,9 @@ export class FileDescriber {
                 return;
             }
 
-            await this.files.updateDescription(file.id!, description);
+            await this.files.setDescription(file.id, description);
 
-            return this.files.findById(file.id!);
+            return this.files.findById(file.id);
         } catch (error) {
             const message = JSON.stringify({ error });
 

@@ -18,7 +18,7 @@ export class AudioDescriber {
         let file: string | null = data;
 
         if (mimeType !== 'audio/mp3') {
-            file = await convertToMp3(data, mimeType || 'application/octet-stream');
+            file = await convertToMp3(data);
         }
 
         const payload = Llama.toContentPart('audio', file || data, mimeType);
