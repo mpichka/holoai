@@ -1,7 +1,10 @@
 import * as awilix from 'awilix';
 import { Database } from '../db';
+import { FileRepository } from '../db/repositories';
+import { Llama } from '../llama';
 import { LoggerFactory } from '../logger';
 import { Router } from '../router';
+import { TelegramBot } from '../tg';
 
 export class DIContainerFactory {
     static createContainer(): awilix.AwilixContainer {
@@ -35,6 +38,11 @@ export class DIContainerFactory {
             LoggerFactory: awilix.asValue(LoggerFactory),
             Database: awilix.asClass(Database, SINGLETON),
             Router: awilix.asClass(Router, SINGLETON),
+            Llama: awilix.asClass(Llama, SINGLETON),
+            TelegramBot: awilix.asClass(TelegramBot, SINGLETON),
+
+            // repo
+            FileRepository: awilix.asClass(FileRepository, SINGLETON),
         });
 
         return container;
