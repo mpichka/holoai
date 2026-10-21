@@ -1,0 +1,35 @@
+{
+    "name": "@holoai/backend",
+    "version": "0.0.0",
+    "private": true,
+    "type": "commonjs",
+    "main": "dist/main.js",
+    "engines": {
+        "node": ">=24.14.0 <25.0.0"
+    },
+    "scripts": {
+        "build": "tsc",
+        "start": "tsc && node dist/main.js",
+        "m:new": "knex migrate:make -x js --knexfile knexfile.js",
+        "m:up": "knex migrate:latest --knexfile knexfile.js",
+        "m:down": "knex migrate:rollback --knexfile knexfile.js",
+        "m:status": "knex migrate:status --knexfile knexfile.js"
+    },
+    "dependencies": {
+        "awilix": "13.0.3",
+        "dotenv": "17.4.2",
+        "express": "5.2.1",
+        "knex": "3.3.0",
+        "node-telegram-bot-api": "2.1.0",
+        "sqlite3": "6.0.1",
+        "winston": "3.19.0",
+        "zod": "4.3.6"
+    },
+    "devDependencies": {
+        "@tsconfig/node24": "^24.0.3",
+        "@types/express": "^5.0.6",
+        "@types/node": "^24.12.0",
+        "tsx": "^4.20.0",
+        "typescript": "^5.9.0"
+    }
+}

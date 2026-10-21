@@ -1,0 +1,9 @@
+packages:
+    - backend
+
+allowBuilds:
+    esbuild: true
+    sqlite3: true
+
+onlyBuiltDependencies:
+    - esbuild
