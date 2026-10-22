@@ -1,1 +1,1 @@
-export * from './FileDescriber';
+export * from './FileDescriberService';

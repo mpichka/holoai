@@ -7,7 +7,7 @@ import { MEDIA_KIND, type MediaKind } from './constants';
 import { ImageDescriber } from './image/ImageDescriber';
 import { VideoDescriber } from './video/VideoDescriber';
 
-export class FileDescriber {
+export class FileDescriberService {
     imageDescriber;
     audioDescriber;
     videoDescriber;
