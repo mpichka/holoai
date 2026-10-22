@@ -12,6 +12,7 @@ export class HoloController {
     }
 
     async handleTgMessage(ctx: ChatContext) {
+        console.log(ctx);
         if (ctx.isOwnBot) return;
 
         if (ctx.edited) {

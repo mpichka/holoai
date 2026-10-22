@@ -7,7 +7,7 @@ import { LoggerFactory } from './utils/logger';
 import { Router } from './utils/router';
 import { TelegramBot } from './utils/tg';
 
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: '.env' });
 
 async function bootstrap() {
     const PORT = Number(process.env.PORT) || 3030;
@@ -24,7 +24,7 @@ async function bootstrap() {
 
     const holo = container.resolve<HoloController>('HoloController');
 
-    tg.addHandler(holo.handleTgMessage);
+    tg.addHandler(holo.handleTgMessage.bind(holo));
 
     const server = http.createServer(router);
 

@@ -43,16 +43,19 @@ export class DIContainerFactory {
             Router: awilix.asClass(Router, SINGLETON),
             Llama: awilix.asClass(Llama, SINGLETON),
             TelegramBot: awilix.asClass(TelegramBot, SINGLETON),
+        });
 
-            // repositories
+        container.register({
             FileRepository: awilix.asClass(FileRepository, SINGLETON),
+        });
 
-            // controllers
-            HoloController: awilix.asClass(HoloController, SINGLETON),
-
-            // services
+        container.register({
             FileDescriberService: awilix.asClass(FileDescriberService, SINGLETON),
             TriggerService: awilix.asClass(TriggerService, SINGLETON),
+        });
+
+        container.register({
+            HoloController: awilix.asClass(HoloController, SINGLETON),
         });
 
         return container;
