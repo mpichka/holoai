@@ -33,7 +33,7 @@ export class TriggerService {
         if (!command) return null;
 
         // "/cmd@someone_else" is not for us; "/cmd@us" and bare "/cmd" are.
-        if (target && target.toLowerCase() !== botName?.toLowerCase()) false;
+        if (target && target.toLowerCase() !== botName?.toLowerCase()) return null;
 
         return { reason: TRIGGER.COMMAND, command, args: args.trim() };
     }
