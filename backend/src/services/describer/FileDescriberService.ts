@@ -12,7 +12,7 @@ export class FileDescriberService {
     audioDescriber;
     videoDescriber;
     logger: winston.Logger;
-    files: FileRepository;
+    fileRepository: FileRepository;
     tg: TelegramBot;
 
     constructor(container: Container) {
@@ -21,12 +21,12 @@ export class FileDescriberService {
         this.videoDescriber = new VideoDescriber(container.Llama);
 
         this.logger = container.LoggerFactory.createLogger('FileDescriber');
-        this.files = container.FileRepository;
+        this.fileRepository = container.Database.fileRepository;
         this.tg = container.TelegramBot;
     }
 
     async describe(file: FileRecord) {
-        const existingFile = await this.files.findByUniqueTgId(file.telegramFileUniqueId);
+        const existingFile = await this.fileRepository.findByUniqueTgId(file.telegramFileUniqueId);
 
         if (existingFile?.description?.trim()) return existingFile;
 
@@ -73,9 +73,9 @@ export class FileDescriberService {
                 return;
             }
 
-            await this.files.setDescription(file.id, description);
+            await this.fileRepository.setDescription(file.id, description);
 
-            return this.files.findById(file.id);
+            return this.fileRepository.findById(file.id);
         } catch (error) {
             const message = JSON.stringify({ error });
 
@@ -103,7 +103,7 @@ export class FileDescriberService {
         if (!file.id) return;
 
         try {
-            await this.files.setDescriptionError(file.id, reason);
+            await this.fileRepository.setDescriptionError(file.id, reason);
         } catch (err) {
             this.logger.warn(`Cannot write description error for file ${file.id}: ${err}`);
         }

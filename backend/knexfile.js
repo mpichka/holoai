@@ -2,7 +2,7 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 const path = require('path');
 
-dotenv.config({ path: '.env' });
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 function ensureDatabaseFile(filename) {
     if (fs.existsSync(filename)) return;
@@ -11,7 +11,7 @@ function ensureDatabaseFile(filename) {
     fs.writeFileSync(filename, '');
 }
 
-const dbFilename = process.env.BACKEND_SQLITE_DB_PATH ?? path.join(process.cwd(), 'data', 'database.sqlite3');
+const dbFilename = process.env.BACKEND_SQLITE_DB_PATH ?? path.resolve(__dirname, '..', 'data', 'database.sqlite3');
 
 ensureDatabaseFile(dbFilename);
 

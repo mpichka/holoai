@@ -11,7 +11,10 @@
         "logs": "pm2 logs holoai-backend",
         "lint": "eslint .",
         "format": "prettier --write .",
-        "m:up": "pnpm --filter @holoai/backend m:up"
+        "m:new": "pnpm --filter @holoai/backend m:new",
+        "m:up": "pnpm --filter @holoai/backend m:up",
+        "m:down": "pnpm --filter @holoai/backend m:down",
+        "m:status": "pnpm --filter @holoai/backend m:status"
     },
     "engines": {
         "node": ">=24.14.0 <25.0.0",

@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import http from 'http';
+import path from 'path';
 import { HoloController } from './controllers/HoloController';
 import { Database } from './utils/db';
 import { DIContainerFactory } from './utils/di';
@@ -7,7 +8,7 @@ import { LoggerFactory } from './utils/logger';
 import { Router } from './utils/router';
 import { TelegramBot } from './utils/tg';
 
-dotenv.config({ path: '.env' });
+dotenv.config({ path: path.join(process.cwd(), '.env') });
 
 async function bootstrap() {
     const PORT = Number(process.env.PORT) || 3030;

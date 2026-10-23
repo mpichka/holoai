@@ -2,7 +2,6 @@ import type { HoloController } from '../../controllers/HoloController';
 import type { FileDescriberService } from '../../services/describer';
 import type { TriggerService } from '../../services/trigger';
 import type { Database } from '../db';
-import type { FileRepository } from '../db/repositories';
 import type { Llama } from '../llama';
 import type { LoggerFactory } from '../logger';
 import type { Router } from '../router';
@@ -14,9 +13,6 @@ export type Container = {
     Router: Router;
     Llama: Llama;
     TelegramBot: TelegramBot;
-
-    // repositories
-    FileRepository: FileRepository;
 
     // controllers
     HoloController: HoloController;

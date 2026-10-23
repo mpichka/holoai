@@ -3,7 +3,6 @@ import { HoloController } from '../../controllers/HoloController';
 import { FileDescriberService } from '../../services/describer';
 import { TriggerService } from '../../services/trigger';
 import { Database } from '../db';
-import { FileRepository } from '../db/repositories';
 import { Llama } from '../llama';
 import { LoggerFactory } from '../logger';
 import { Router } from '../router';
@@ -43,10 +42,6 @@ export class DIContainerFactory {
             Router: awilix.asClass(Router, SINGLETON),
             Llama: awilix.asClass(Llama, SINGLETON),
             TelegramBot: awilix.asClass(TelegramBot, SINGLETON),
-        });
-
-        container.register({
-            FileRepository: awilix.asClass(FileRepository, SINGLETON),
         });
 
         container.register({

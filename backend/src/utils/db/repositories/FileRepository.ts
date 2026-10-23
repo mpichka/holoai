@@ -1,4 +1,4 @@
-import type { Container } from '../../di';
+import type { Knex } from 'knex';
 import type { FilePhotoSize, FileType } from '../types';
 
 export interface FileRecord {
@@ -35,11 +35,7 @@ export type NewFileRecord = Omit<FileRecord, 'id' | 'createdAt' | 'messageId'>;
  * is a single row carrying all of its sizes rather than one row per size.
  */
 export class FileRepository {
-    private knex;
-
-    constructor(container: Container) {
-        this.knex = container.Database.knex;
-    }
+    constructor(private readonly knex: Knex) {}
 
     async createForMessage(messageId: number, files: NewFileRecord[]): Promise<void> {
         if (files.length === 0) return;
