@@ -1,4 +1,4 @@
-import { HTTP_STATUS_CODE } from '../../constants/httpStatusCode';
+import { HTTP_STATUS_CODE } from '../../constants';
 import { HttpException } from './HttpException';
 
 const DEFAULT_CODE = 'UNPROCESSABLE_CONTENT_EXCEPTION';

@@ -1,58 +1,31 @@
+import { CHARACTER_NAMES } from '../constants';
+import { HoloService } from '../services/HoloService';
 import type { TriggerService } from '../services/trigger';
-import type { Database } from '../utils/db';
-import type { UserRepository } from '../utils/db/repositories';
 import type { Container } from '../utils/di';
 import type { ChatContext, TelegramBot } from '../utils/tg';
 
 export class HoloController {
-    characterNames = ['Holo', 'Холо'];
+    holoService: HoloService;
     triggerService: TriggerService;
     tg: TelegramBot;
-    db: Database;
-
-    userRepository: UserRepository;
 
     constructor(container: Container) {
+        this.holoService = container.HoloService;
         this.triggerService = container.TriggerService;
         this.tg = container.TelegramBot;
-        this.db = container.Database;
-
-        this.userRepository = this.db.userRepository;
     }
 
     async handleTgMessage(ctx: ChatContext) {
         if (ctx.isOwnBot) return;
 
         if (ctx.edited) {
-            if (ctx.edited.from) {
-                const user = ctx.edited.from;
-
-                await this.userRepository.upsert({
-                    tgId: user.id,
-                    is_bot: user.is_bot,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    username: user.username,
-                    language_code: user.language_code,
-                });
-            }
+            await this.holoService.upsertTgUser(ctx.edited);
 
             return;
         }
 
         if (ctx.new) {
-            if (ctx.new.from) {
-                const user = ctx.new.from;
-
-                await this.userRepository.upsert({
-                    tgId: user.id,
-                    is_bot: user.is_bot,
-                    first_name: user.first_name,
-                    last_name: user.last_name,
-                    username: user.username,
-                    language_code: user.language_code,
-                });
-            }
+            await this.holoService.upsertTgUser(ctx.new);
         }
 
         if (ctx.isReply) {
@@ -65,7 +38,7 @@ export class HoloController {
             // mention
         }
 
-        const isNameCall = this.triggerService.matchCharacterName('', this.characterNames);
+        const isNameCall = this.triggerService.matchCharacterName('', CHARACTER_NAMES);
 
         if (isNameCall) {
             // name

@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import type winston from 'winston';
 import { ZodError } from 'zod';
-import { HTTP_STATUS_CODE } from '../../constants/httpStatusCode';
+import { HTTP_STATUS_CODE } from '../../constants';
 import { BadRequestException, HttpException, InternalServerException } from '../exceptions';
 
 export function errorHandlerMiddleware(logger: winston.Logger) {

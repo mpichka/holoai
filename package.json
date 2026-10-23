@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "scripts": {
-        "dev:b": "node backend/dist/main.js",
+        "dev:b": "pnpm --filter @holoai/backend build && node backend/dist/main.js",
         "build": "pnpm -r build",
         "start": "pnpm -r build && pm2 start ecosystem.config.cjs --env production",
         "stop": "pm2 stop ecosystem.config.cjs",

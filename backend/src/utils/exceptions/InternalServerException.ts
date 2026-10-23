@@ -1,4 +1,4 @@
-import { HTTP_STATUS_CODE } from '../../constants/httpStatusCode';
+import { HTTP_STATUS_CODE } from '../../constants';
 import { HttpException } from './HttpException';
 
 const DEFAULT_CODE = 'INTERNAL_SERVER_ERROR_EXCEPTION';

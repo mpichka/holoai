@@ -1,6 +1,7 @@
 import * as awilix from 'awilix';
 import { HoloController } from '../../controllers/HoloController';
 import { FileDescriberService } from '../../services/describer';
+import { HoloService } from '../../services/HoloService';
 import { TriggerService } from '../../services/trigger';
 import { Database } from '../db';
 import { Llama } from '../llama';
@@ -47,6 +48,7 @@ export class DIContainerFactory {
         container.register({
             FileDescriberService: awilix.asClass(FileDescriberService, SINGLETON),
             TriggerService: awilix.asClass(TriggerService, SINGLETON),
+            HoloService: awilix.asClass(HoloService, SINGLETON),
         });
 
         container.register({
