@@ -2,8 +2,7 @@ import fs from 'fs';
 import knexFactory, { type Knex } from 'knex';
 import path from 'path';
 import type { Container } from '../di';
-import { FileRepository } from './repositories';
-import { UserRepository } from './repositories/UserRepository';
+import { ChatRepository, FileRepository, UserRepository } from './repositories';
 
 export class Database {
     readonly knex: Knex;
@@ -11,6 +10,7 @@ export class Database {
 
     userRepository: UserRepository;
     fileRepository: FileRepository;
+    chatRepository: ChatRepository;
 
     constructor(container: Container) {
         this.logger = container.LoggerFactory.createLogger('Database');
@@ -42,6 +42,7 @@ export class Database {
 
         this.userRepository = new UserRepository(this.knex);
         this.fileRepository = new FileRepository(this.knex);
+        this.chatRepository = new ChatRepository(this.knex);
     }
 
     async migrate(): Promise<void> {

@@ -19,13 +19,19 @@ export class HoloController {
         if (ctx.isOwnBot) return;
 
         if (ctx.edited) {
-            await this.holoService.upsertTgUser(ctx.edited);
+            await this.holoService.upsertTgUser(ctx.edited?.from);
+            await this.holoService.upsertTgUser(ctx.edited?.reply_to_message?.from);
+            await this.holoService.upsertTgChat(ctx.edited.chat);
+            await this.holoService.upsertTgChat(ctx.edited?.reply_to_message?.chat);
 
             return;
         }
 
         if (ctx.new) {
-            await this.holoService.upsertTgUser(ctx.new);
+            await this.holoService.upsertTgUser(ctx.new?.from);
+            await this.holoService.upsertTgUser(ctx.new?.reply_to_message?.from);
+            await this.holoService.upsertTgChat(ctx.new.chat);
+            await this.holoService.upsertTgChat(ctx.new?.reply_to_message?.chat);
         }
 
         if (ctx.isReply) {
