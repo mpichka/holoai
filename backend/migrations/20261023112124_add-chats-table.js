@@ -15,7 +15,7 @@ exports.up = async function (knex) {
             "last_name" TEXT,
             "username" TEXT,
             "is_forum" INTEGER NOT NULL DEFAULT 0,
-            "is_direct_messages" INTEGER NOT NULL DEFAULT 0,
+            "is_direct_messages" INTEGER NOT NULL DEFAULT 0
         )
     `);
 
