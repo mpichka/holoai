@@ -20,9 +20,9 @@ export type NewChatRecord = Omit<ChatRecord, 'id' | 'createdAt' | 'updatedAt'>;
 export class ChatRepository {
     constructor(private readonly knex: Knex) {}
 
-    async upsert(user: NewChatRecord): Promise<ChatRecord> {
+    async upsert(chat: NewChatRecord): Promise<ChatRecord> {
         return this.knex('chats')
-            .insert(user)
+            .insert(chat)
             .onConflict('tgId')
             .merge(['type', 'title', 'username', 'is_forum', 'is_direct_messages'])
             .returning<ChatRecord>('*');

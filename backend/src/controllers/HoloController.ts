@@ -22,12 +22,23 @@ export class HoloController {
             const user = await this.holoService.upsertTgUser(ctx.edited.from);
             const chat = await this.holoService.upsertTgChat(ctx.edited.chat);
 
+            if (user && chat) {
+                const message = await this.holoService.upsertMessage(ctx.edited, { chatId: chat.id, userId: user.id });
+            }
+
             return;
         }
 
         if (ctx.new) {
             const user = await this.holoService.upsertTgUser(ctx.new.from);
             const chat = await this.holoService.upsertTgChat(ctx.new.chat);
+
+            if (user && chat) {
+                const message = await this.holoService.upsertMessage(ctx.new, {
+                    chatId: chat.id,
+                    userId: user.id,
+                });
+            }
         }
 
         if (ctx.isReply) {

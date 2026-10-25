@@ -1,8 +1,11 @@
-import type { Chat, User } from 'node-telegram-bot-api';
+import type { Chat, Message, User } from 'node-telegram-bot-api';
 import type {
     ChatRecord,
     ChatRepository,
+    MessageRecord,
+    MessageRepository,
     NewChatRecord,
+    NewMessageRecord,
     NewUserRecord,
     UserRecord,
     UserRepository,
@@ -16,9 +19,16 @@ interface CacheEntry<T> {
     timestamp: number;
 }
 
+interface MessageCreationOptions {
+    userId: number;
+    chatId: number;
+    replyToId?: number;
+}
+
 export class HoloService {
     userRepository: UserRepository;
     chatRepository: ChatRepository;
+    messageRepository: MessageRepository;
 
     private userCache = new Map<number, CacheEntry<UserRecord>>();
     private chatCache = new Map<number, CacheEntry<ChatRecord>>();
@@ -27,6 +37,7 @@ export class HoloService {
         const db = container.Database;
         this.userRepository = db.userRepository;
         this.chatRepository = db.chatRepository;
+        this.messageRepository = db.messageRepository;
     }
 
     async upsertTgUser(user?: User): Promise<UserRecord | null> {
@@ -75,6 +86,22 @@ export class HoloService {
         this.chatCache.set(payload.tgId, { payload: data, timestamp: Date.now() });
 
         return data;
+    }
+
+    async upsertMessage(message: Message, options: MessageCreationOptions): Promise<MessageRecord | null> {
+        if (!message) return null;
+
+        const payload: NewMessageRecord = {
+            chatId: options.chatId,
+            userId: options.userId,
+            messageTgId: message.message_id,
+            threadTgId: message.message_thread_id,
+            replyToId: options.replyToId,
+            sentAt: message.date,
+            text: message.text || message.caption,
+        };
+
+        return this.messageRepository.upsert(payload);
     }
 
     private getCached<T>(cache: Map<number, CacheEntry<any>>, payload: { tgId: number }): T | null {
