@@ -25,7 +25,7 @@ exports.up = async function (knex) {
         CREATE TRIGGER "update_attachments_updated_at"
         AFTER UPDATE ON "attachments"
         FOR EACH ROW
-            WHEN NEW."updatedAt" = OLD."updated_at"
+            WHEN NEW."updated_at" = OLD."updated_at"
         BEGIN
             UPDATE "attachments"
             SET "updated_at" = strftime('%s', 'now')
