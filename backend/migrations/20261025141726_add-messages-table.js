@@ -15,7 +15,7 @@ exports.up = async function (knex) {
             "messageTgId" INTEGER NOT NULL,
             "threadTgId" INTEGER NULL,
             "replyToId" INTEGER NULL,
-            "sentAt INTEGER NULL,
+            "sentAt" INTEGER NULL,
             "text" TEXT NULL
         )
     `);
