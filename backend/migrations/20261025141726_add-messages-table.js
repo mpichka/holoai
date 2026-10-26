@@ -12,7 +12,7 @@ exports.up = async function (knex) {
             "chat_id" INTEGER NOT NULL,
             "user_id" INTEGER NOT NULL,
 
-            "message_tg_id" INTEGER NOT NULL,
+            "message_tg_id" INTEGER NOT NULL UNIQUE,
             "thread_tg_id" INTEGER NULL,
             "reply_to_id" INTEGER NULL,
             "sent_at" INTEGER NULL,

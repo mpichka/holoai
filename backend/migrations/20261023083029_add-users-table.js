@@ -8,7 +8,7 @@ exports.up = async function (knex) {
             "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
             "created_at" INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
             "updated_at" INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-            "tgId" INTEGER NOT NULL UNIQUE,
+            "tg_id" INTEGER NOT NULL UNIQUE,
             "is_bot" INTEGER NOT NULL DEFAULT 0,
             "first_name" TEXT,
             "last_name" TEXT,
