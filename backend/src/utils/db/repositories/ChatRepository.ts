@@ -2,10 +2,10 @@ import type { Knex } from 'knex';
 
 export interface ChatRecord {
     id: number;
-    createdAt: number;
-    updatedAt: number;
+    created_at: number;
+    updated_at: number;
 
-    tgId: number;
+    tg_id: number;
     type: string;
     title?: string;
     first_name?: string;
@@ -15,7 +15,7 @@ export interface ChatRecord {
     is_direct_messages: boolean;
 }
 
-export type NewChatRecord = Omit<ChatRecord, 'id' | 'createdAt' | 'updatedAt'>;
+export type NewChatRecord = Omit<ChatRecord, 'id' | 'created_at' | 'updated_at'>;
 
 export class ChatRepository {
     constructor(private readonly knex: Knex) {}
@@ -23,7 +23,7 @@ export class ChatRepository {
     async upsert(chat: NewChatRecord): Promise<ChatRecord> {
         return this.knex('chats')
             .insert(chat)
-            .onConflict('tgId')
+            .onConflict('tg_id')
             .merge(['type', 'title', 'username', 'is_forum', 'is_direct_messages'])
             .returning<ChatRecord>('*');
     }

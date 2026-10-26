@@ -20,9 +20,9 @@ interface CacheEntry<T> {
 }
 
 interface MessageCreationOptions {
-    userId: number;
-    chatId: number;
-    replyToId?: number;
+    user_id: number;
+    chat_id: number;
+    reply_to_id?: number;
 }
 
 export class HoloService {
@@ -44,7 +44,7 @@ export class HoloService {
         if (!user) return null;
 
         const payload: NewUserRecord = {
-            tgId: user.id,
+            tg_id: user.id,
             is_bot: user.is_bot,
             first_name: user.first_name,
             last_name: user.last_name,
@@ -58,7 +58,7 @@ export class HoloService {
 
         const data = await this.userRepository.upsert(payload);
 
-        this.userCache.set(payload.tgId, { payload: data, timestamp: Date.now() });
+        this.userCache.set(payload.tg_id, { payload: data, timestamp: Date.now() });
 
         return data;
     }
@@ -67,7 +67,7 @@ export class HoloService {
         if (!chat) return null;
 
         const payload: NewChatRecord = {
-            tgId: chat.id,
+            tg_id: chat.id,
             type: chat.type,
             title: chat.title,
             first_name: chat.first_name,
@@ -83,7 +83,7 @@ export class HoloService {
 
         const data = await this.chatRepository.upsert(payload);
 
-        this.chatCache.set(payload.tgId, { payload: data, timestamp: Date.now() });
+        this.chatCache.set(payload.tg_id, { payload: data, timestamp: Date.now() });
 
         return data;
     }
@@ -92,24 +92,24 @@ export class HoloService {
         if (!message) return null;
 
         const payload: NewMessageRecord = {
-            chatId: options.chatId,
-            userId: options.userId,
-            messageTgId: message.message_id,
-            threadTgId: message.message_thread_id,
-            replyToId: options.replyToId,
-            sentAt: message.date,
+            chat_id: options.chat_id,
+            user_id: options.user_id,
+            message_tg_id: message.message_id,
+            thread_tg_id: message.message_thread_id,
+            reply_to_id: options.reply_to_id,
+            sent_at: message.date,
             text: message.text || message.caption,
         };
 
         return this.messageRepository.upsert(payload);
     }
 
-    private getCached<T>(cache: Map<number, CacheEntry<any>>, payload: { tgId: number }): T | null {
-        const entry = cache.get(payload.tgId);
+    private getCached<T>(cache: Map<number, CacheEntry<any>>, payload: { tg_id: number }): T | null {
+        const entry = cache.get(payload.tg_id);
         if (!entry) return null;
 
         if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-            cache.delete(payload.tgId);
+            cache.delete(payload.tg_id);
             return null;
         }
 

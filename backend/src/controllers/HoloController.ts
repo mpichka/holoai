@@ -23,7 +23,10 @@ export class HoloController {
             const chat = await this.holoService.upsertTgChat(ctx.edited.chat);
 
             if (user && chat) {
-                const message = await this.holoService.upsertMessage(ctx.edited, { chatId: chat.id, userId: user.id });
+                const message = await this.holoService.upsertMessage(ctx.edited, {
+                    chat_id: chat.id,
+                    user_id: user.id,
+                });
             }
 
             return;
@@ -35,8 +38,8 @@ export class HoloController {
 
             if (user && chat) {
                 const message = await this.holoService.upsertMessage(ctx.new, {
-                    chatId: chat.id,
-                    userId: user.id,
+                    chat_id: chat.id,
+                    user_id: user.id,
                 });
             }
         }

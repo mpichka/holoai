@@ -6,28 +6,28 @@ exports.up = async function (knex) {
     await knex.raw(`
         CREATE TABLE "messages" (
             "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-            "createdAt" INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
-            "updatedAt" INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            "created_at" INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
+            "updated_at" INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
 
-            "chatId" INTEGER NOT NULL,
-            "userId" INTEGER NOT NULL,
+            "chat_id" INTEGER NOT NULL,
+            "user_id" INTEGER NOT NULL,
 
-            "messageTgId" INTEGER NOT NULL,
-            "threadTgId" INTEGER NULL,
-            "replyToId" INTEGER NULL,
-            "sentAt" INTEGER NULL,
+            "message_tg_id" INTEGER NOT NULL,
+            "thread_tg_id" INTEGER NULL,
+            "reply_to_id" INTEGER NULL,
+            "sent_at" INTEGER NULL,
             "text" TEXT NULL
         )
     `);
 
     await knex.raw(`
-        CREATE TRIGGER "update_messages_updatedAt"
+        CREATE TRIGGER "update_messages_updated_at"
         AFTER UPDATE ON "messages"
         FOR EACH ROW
-            WHEN NEW."updatedAt" = OLD."updatedAt"
+            WHEN NEW."updated_at" = OLD."updated_at"
         BEGIN
             UPDATE "messages"
-            SET "updatedAt" = strftime('%s', 'now')
+            SET "updated_at" = strftime('%s', 'now')
             WHERE "id" = NEW."id";
         END
     `);
@@ -38,7 +38,7 @@ exports.up = async function (knex) {
  * @returns { Promise<void> }
  */
 exports.down = async function (knex) {
-    await knex.raw(`DROP TRIGGER IF EXISTS "update_messages_updatedAt"`);
+    await knex.raw(`DROP TRIGGER IF EXISTS "update_messages_updated_at"`);
 
     await knex.raw(`DROP TABLE IF EXISTS "messages"`);
 };

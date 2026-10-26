@@ -2,20 +2,20 @@ import type { Knex } from 'knex';
 
 export interface MessageRecord {
     id: number;
-    createdAt: number;
-    updatedAt: number;
+    created_at: number;
+    updated_at: number;
 
-    chatId: number;
-    userId: number;
+    chat_id: number;
+    user_id: number;
 
-    messageTgId: number;
-    threadTgId?: number;
-    replyToId?: number;
-    sentAt: number;
+    message_tg_id: number;
+    thread_tg_id?: number;
+    reply_to_id?: number;
+    sent_at: number;
     text?: string;
 }
 
-export type NewMessageRecord = Omit<MessageRecord, 'id' | 'createdAt' | 'updatedAt'>;
+export type NewMessageRecord = Omit<MessageRecord, 'id' | 'created_at' | 'updated_at'>;
 
 export class MessageRepository {
     constructor(private readonly knex: Knex) {}
@@ -23,8 +23,8 @@ export class MessageRepository {
     async upsert(message: NewMessageRecord): Promise<MessageRecord> {
         return this.knex('messages')
             .insert(message)
-            .onConflict(['messageTgId'])
-            .merge(['threadTgId', 'replyToId', 'sentAt', 'text'])
+            .onConflict(['message_tg_id'])
+            .merge(['thread_tg_id', 'reply_to_id', 'sent_at', 'text'])
             .returning<MessageRecord>('*');
     }
 }
