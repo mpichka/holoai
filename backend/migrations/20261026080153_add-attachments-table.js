@@ -11,7 +11,7 @@ exports.up = async function (knex) {
 
             "type" INTEGER NOT NULL,
             "file_tg_uid" TEXT NOT NULL UNIQUE,
-            "file_size" INTEGER NOT NULL,
+            "file_size" INTEGER NULL,
             "mime_type" TEXT NULL,
             "file_name" TEXT NULL,
             "duration" INTEGER NULL,

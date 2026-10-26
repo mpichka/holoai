@@ -13,6 +13,11 @@ export const ATTACHMENT_TYPE = Object.freeze({
     VIDEO_NOTE: 41,
 });
 
+export type StickerType =
+    | (typeof ATTACHMENT_TYPE)['STICKER_PHOTO']
+    | (typeof ATTACHMENT_TYPE)['STICKER_ANIMATION']
+    | (typeof ATTACHMENT_TYPE)['STICKER_VIDEO'];
+
 export type AttachmentType = (typeof ATTACHMENT_TYPE)[keyof typeof ATTACHMENT_TYPE];
 
 export interface AttachmentRecord {
@@ -22,7 +27,7 @@ export interface AttachmentRecord {
 
     type: AttachmentType;
     file_tg_uid: string;
-    file_size: number;
+    file_size?: number;
     mime_type?: string;
     file_name?: string;
     duration?: number;
@@ -36,9 +41,9 @@ export type NewAttachmentRecord = Omit<AttachmentRecord, 'id' | 'created_at' | '
 export class AttachmentRepository {
     constructor(private readonly knex: Knex) {}
 
-    async upsert(chat: NewAttachmentRecord): Promise<AttachmentRecord> {
+    async upsert(payload: NewAttachmentRecord): Promise<AttachmentRecord> {
         const res = await this.knex('attachments')
-            .insert(chat)
+            .insert(payload)
             .onConflict('file_tg_uid')
             .merge(['file_size', 'mime_type', 'file_name', 'duration', 'performer'])
             .returning<AttachmentRecord[]>('*');

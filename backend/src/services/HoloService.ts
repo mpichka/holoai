@@ -1,14 +1,30 @@
-import type { Chat, Message, User } from 'node-telegram-bot-api';
 import type {
-    ChatRecord,
-    ChatRepository,
-    MessageRecord,
-    MessageRepository,
-    NewChatRecord,
-    NewMessageRecord,
-    NewUserRecord,
-    UserRecord,
-    UserRepository,
+    Animation,
+    Audio,
+    Chat,
+    LivePhoto,
+    Message,
+    PhotoSize,
+    Sticker,
+    User,
+    Video,
+    VideoNote,
+    Voice,
+} from 'node-telegram-bot-api';
+import {
+    ATTACHMENT_TYPE,
+    type AttachmentRepository,
+    type AttachmentToMessageRepository,
+    type ChatRecord,
+    type ChatRepository,
+    type MessageRecord,
+    type MessageRepository,
+    type NewChatRecord,
+    type NewMessageRecord,
+    type NewUserRecord,
+    type StickerType,
+    type UserRecord,
+    type UserRepository,
 } from '../utils/db/repositories';
 import type { Container } from '../utils/di';
 
@@ -25,10 +41,18 @@ interface MessageCreationOptions {
     reply_to_id?: number;
 }
 
+interface AttachmentCreationOptions {
+    message_id: number;
+    caption?: string;
+    media_group_id?: string;
+}
+
 export class HoloService {
     userRepository: UserRepository;
     chatRepository: ChatRepository;
     messageRepository: MessageRepository;
+    attachmentRepository: AttachmentRepository;
+    attachmentToMessageRepository: AttachmentToMessageRepository;
 
     private userCache = new Map<number, CacheEntry<UserRecord>>();
     private chatCache = new Map<number, CacheEntry<ChatRecord>>();
@@ -38,6 +62,8 @@ export class HoloService {
         this.userRepository = db.userRepository;
         this.chatRepository = db.chatRepository;
         this.messageRepository = db.messageRepository;
+        this.attachmentRepository = db.attachmentRepository;
+        this.attachmentToMessageRepository = db.attachmentToMessageRepository;
     }
 
     async upsertTgUser(user?: User): Promise<UserRecord | null> {
@@ -125,5 +151,135 @@ export class HoloService {
         }
 
         return entry.payload as T;
+    }
+
+    async createAudioAttachment(audio: Audio, options: AttachmentCreationOptions) {
+        const attachment = await this.attachmentRepository.upsert({
+            type: ATTACHMENT_TYPE.AUDIO,
+            file_tg_uid: audio.file_unique_id,
+            file_size: audio.file_size,
+            duration: audio.duration,
+            mime_type: audio.mime_type,
+            file_name: audio.file_name,
+            performer: audio.performer,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: audio.file_id,
+            ...options,
+        });
+    }
+
+    async createVoiceAttachment(voice: Voice, options: AttachmentCreationOptions) {
+        const attachment = await this.attachmentRepository.upsert({
+            type: ATTACHMENT_TYPE.AUDIO,
+            file_tg_uid: voice.file_unique_id,
+            file_size: voice.file_size,
+            duration: voice.duration,
+            mime_type: voice.mime_type,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: voice.file_id,
+            ...options,
+        });
+    }
+
+    async createPhotoAttachment(photo: PhotoSize, options: AttachmentCreationOptions) {
+        const attachment = await this.attachmentRepository.upsert({
+            type: ATTACHMENT_TYPE.PHOTO,
+            file_tg_uid: photo.file_unique_id,
+            file_size: photo.file_size,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: photo.file_id,
+            ...options,
+        });
+    }
+
+    async createAnimationAttachment(animation: Animation, options: AttachmentCreationOptions) {
+        const attachment = await this.attachmentRepository.upsert({
+            type: ATTACHMENT_TYPE.ANIMATION,
+            file_tg_uid: animation.file_unique_id,
+            file_size: animation.file_size,
+            duration: animation.duration,
+            mime_type: animation.mime_type,
+            file_name: animation.file_name,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: animation.file_id,
+            ...options,
+        });
+    }
+
+    async createLivePhotoAttachment(livePhoto: LivePhoto, options: AttachmentCreationOptions) {
+        const attachment = await this.attachmentRepository.upsert({
+            type: ATTACHMENT_TYPE.LIVE_PHOTO,
+            file_tg_uid: livePhoto.file_unique_id,
+            file_size: livePhoto.file_size,
+            duration: livePhoto.duration,
+            mime_type: livePhoto.mime_type,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: livePhoto.file_id,
+            ...options,
+        });
+    }
+
+    async createStickerAttachment(sticker: Sticker, options: AttachmentCreationOptions) {
+        let stickerType: StickerType = ATTACHMENT_TYPE.STICKER_PHOTO;
+        if (sticker.is_animated) stickerType = ATTACHMENT_TYPE.STICKER_ANIMATION;
+        if (sticker.is_video) stickerType = ATTACHMENT_TYPE.STICKER_VIDEO;
+
+        const attachment = await this.attachmentRepository.upsert({
+            type: stickerType,
+            file_tg_uid: sticker.file_unique_id,
+            file_size: sticker.file_size,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: sticker.file_id,
+            ...options,
+        });
+    }
+
+    async createVideoAttachment(video: Video, options: AttachmentCreationOptions) {
+        const attachment = await this.attachmentRepository.upsert({
+            type: ATTACHMENT_TYPE.VIDEO,
+            file_tg_uid: video.file_unique_id,
+            file_size: video.file_size,
+            duration: video.duration,
+            mime_type: video.mime_type,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: video.file_id,
+            ...options,
+        });
+    }
+
+    async createVideoNoteAttachment(videoNote: VideoNote, options: AttachmentCreationOptions) {
+        const attachment = await this.attachmentRepository.upsert({
+            type: ATTACHMENT_TYPE.VIDEO_NOTE,
+            file_tg_uid: videoNote.file_unique_id,
+            file_size: videoNote.file_size,
+            duration: videoNote.duration,
+        });
+
+        await this.attachmentToMessageRepository.upsert({
+            attachment_id: attachment.id,
+            file_tg_id: videoNote.file_id,
+            ...options,
+        });
     }
 }

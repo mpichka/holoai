@@ -4,7 +4,7 @@ export interface AttachmentToMessageRecord {
     attachment_id: number;
     message_id: number;
     // Id that used to fetch the file content
-    file_tg_id: number;
+    file_tg_id: string;
     // Optional text that was sent alongside the attachment
     caption?: string;
     // Multiple attachments sent as one message
@@ -14,15 +14,15 @@ export interface AttachmentToMessageRecord {
 export class AttachmentToMessageRepository {
     constructor(private readonly knex: Knex) {}
 
-    async upsert(attachmentToMessage: AttachmentToMessageRecord): Promise<AttachmentToMessageRecord> {
+    async upsert(payload: AttachmentToMessageRecord): Promise<AttachmentToMessageRecord> {
         let res: AttachmentToMessageRecord[] = await this.knex('attachments_to_messages').where({
-            attachment_id: attachmentToMessage.attachment_id,
-            message_id: attachmentToMessage.message_id,
+            attachment_id: payload.attachment_id,
+            message_id: payload.message_id,
         });
 
         if (!res) {
             res = await this.knex('attachments_to_messages')
-                .insert(attachmentToMessage)
+                .insert(payload)
                 .returning<AttachmentToMessageRecord[]>('*');
         }
 
