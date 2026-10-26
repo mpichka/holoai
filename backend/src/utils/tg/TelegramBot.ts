@@ -44,6 +44,9 @@ export class TelegramBot {
 
             const newMessage = ctx.message ?? ctx.channelPost;
             const editedMessage = ctx.editedMessage ?? ctx.editedChannelPost;
+            const message = newMessage || editedMessage;
+
+            if (!message) return next();
 
             await Promise.all(
                 this.handlers.map(
@@ -52,9 +55,10 @@ export class TelegramBot {
                             chatId,
                             threadId,
                             isOwnBot,
-                            new: newMessage || null,
-                            edited: editedMessage || null,
-                            isReply: isReplyToBot(this.botName, newMessage || editedMessage),
+                            message,
+                            isNew: Boolean(newMessage),
+                            isEdited: Boolean(editedMessage),
+                            isReplyToBot: isReplyToBot(this.botName, message),
                         }),
                 ),
             );

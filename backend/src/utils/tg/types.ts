@@ -4,9 +4,10 @@ export interface ChatContext {
     chatId: number;
     threadId?: number;
     isOwnBot: boolean;
-    isReply: boolean;
-    new: Message | null;
-    edited: Message | null;
+    isReplyToBot: boolean;
+    message: Message;
+    isNew: boolean;
+    isEdited: boolean;
 }
 
 export interface SendOptions {

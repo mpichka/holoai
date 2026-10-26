@@ -20,36 +20,9 @@ export class HoloController {
 
         if (ctx.isOwnBot) return;
 
-        if (ctx.edited) {
-            const tgm = ctx.edited;
+        await this.logMessage(ctx);
 
-            const user = await this.holoService.upsertTgUser(tgm.from);
-            const chat = await this.holoService.upsertTgChat(tgm.chat);
-
-            let message = null;
-            if (user && chat) {
-                message = await this.holoService.upsertMessage(tgm, {
-                    chat_id: chat.id,
-                    user_id: user.id,
-                });
-            }
-
-            return;
-        }
-
-        if (ctx.new) {
-            const user = await this.holoService.upsertTgUser(ctx.new.from);
-            const chat = await this.holoService.upsertTgChat(ctx.new.chat);
-
-            if (user && chat) {
-                const message = await this.holoService.upsertMessage(ctx.new, {
-                    chat_id: chat.id,
-                    user_id: user.id,
-                });
-            }
-        }
-
-        if (ctx.isReply) {
+        if (ctx.isReplyToBot) {
             // reply
         }
 
@@ -70,5 +43,19 @@ export class HoloController {
         if (isCommand) {
             // command
         }
+    }
+
+    async logMessage(ctx: ChatContext) {
+        const [user, chat] = await Promise.all([
+            this.holoService.upsertTgUser(ctx.message.from),
+            this.holoService.upsertTgChat(ctx.message.chat),
+        ]);
+
+        if (!user || !chat) return;
+
+        const message = await this.holoService.upsertMessage(ctx.message, {
+            chat_id: chat.id,
+            user_id: user.id,
+        });
     }
 }
