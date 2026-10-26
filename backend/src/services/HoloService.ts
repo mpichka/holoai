@@ -12,8 +12,21 @@ import type {
     Voice,
 } from 'node-telegram-bot-api';
 import {
+    ATTACHMENT_COLS,
+    ATTACHMENT_TO_MESSAGE_COLS,
+    CHAT_COLS,
+    ChatModel,
+    MESSAGE_COLS,
+    MessageModel,
+    USER_COLS,
+    UserModel,
+    pickFromAlias,
+} from '../utils/db';
+import {
     ATTACHMENT_TYPE,
+    type AttachmentRecord,
     type AttachmentRepository,
+    type AttachmentToMessageRecord,
     type AttachmentToMessageRepository,
     type ChatRecord,
     type ChatRepository,
@@ -46,6 +59,14 @@ interface AttachmentCreationOptions {
     caption?: string;
     media_group_id?: string;
 }
+
+export type LinkedAttachmentModel = AttachmentRecord & { rel: AttachmentToMessageRecord };
+
+export type FullMessageModel = MessageModel & {
+    chat: ChatModel;
+    user: UserModel;
+    attachments: LinkedAttachmentModel[];
+};
 
 export class HoloService {
     userRepository: UserRepository;
@@ -281,5 +302,32 @@ export class HoloService {
             file_tg_id: videoNote.file_id,
             ...options,
         });
+    }
+
+    async getFullMessage(chat_tg_id: number, message_tg_id: number) {
+        const rows = await this.messageRepository.getMessage(chat_tg_id, message_tg_id);
+
+        if (!rows.length) return null;
+
+        const firstRow = rows[0];
+
+        const attachments = rows
+            .filter((row) => row.a_id != null)
+            .map((row) => {
+                const attachment = pickFromAlias<LinkedAttachmentModel>(row, 'a_', ATTACHMENT_COLS);
+                attachment.rel = pickFromAlias<AttachmentToMessageRecord>(row, 'atm_', ATTACHMENT_TO_MESSAGE_COLS);
+                return attachment;
+            });
+
+        const chat = new ChatModel(pickFromAlias<ChatRecord>(firstRow, 'c_', CHAT_COLS));
+        const user = new UserModel(pickFromAlias<UserRecord>(firstRow, 'u_', USER_COLS));
+        const message = new MessageModel(pickFromAlias<MessageRecord>(firstRow, 'm_', MESSAGE_COLS));
+
+        return {
+            ...message,
+            chat,
+            user,
+            attachments,
+        } as FullMessageModel;
     }
 }

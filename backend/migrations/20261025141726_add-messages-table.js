@@ -12,12 +12,17 @@ exports.up = async function (knex) {
             "chat_id" INTEGER NOT NULL,
             "user_id" INTEGER NOT NULL,
 
-            "message_tg_id" INTEGER NOT NULL UNIQUE,
+            "message_tg_id" INTEGER NOT NULL,
             "thread_tg_id" INTEGER NULL,
             "reply_to_id" INTEGER NULL,
             "sent_at" INTEGER NULL,
             "text" TEXT NULL
         )
+    `);
+
+    await knex.raw(`
+        CREATE UNIQUE INDEX "idx_messages_ids_unique"
+        ON "messages" ("chat_id", "message_tg_id")
     `);
 
     await knex.raw(`
@@ -39,6 +44,8 @@ exports.up = async function (knex) {
  */
 exports.down = async function (knex) {
     await knex.raw(`DROP TRIGGER IF EXISTS "update_messages_updated_at"`);
+
+    await knex.raw(`DROP INDEX IF EXISTS "idx_messages_ids_unique"`);
 
     await knex.raw(`DROP TABLE IF EXISTS "messages"`);
 };

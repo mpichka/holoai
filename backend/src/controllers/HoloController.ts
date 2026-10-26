@@ -1,6 +1,6 @@
 import type { Message } from 'node-telegram-bot-api';
 import { CHARACTER_NAMES } from '../constants';
-import { HoloService } from '../services/HoloService';
+import type { HoloService } from '../services/HoloService';
 import type { TriggerService } from '../services/trigger';
 import type { Container } from '../utils/di';
 import type { ChatContext, TelegramBot } from '../utils/tg';
@@ -21,11 +21,11 @@ export class HoloController {
 
         if (ctx.isOwnBot) return;
 
-        const messageId = await this.logMessage(ctx.message);
+        await this.logMessage(ctx.message);
 
         if (ctx.isEdited) return;
 
-        // TODO: Get message
+        const message = await this.holoService.getFullMessage(ctx.chatId, ctx.message.message_id);
 
         if (ctx.isReplyToBot) {
             // reply
@@ -50,20 +50,20 @@ export class HoloController {
         }
     }
 
-    async logMessage(tgMessage: Message): Promise<number | null> {
+    async logMessage(tgMessage: Message) {
         const [user, chat] = await Promise.all([
             this.holoService.upsertTgUser(tgMessage.from),
             this.holoService.upsertTgChat(tgMessage.chat),
         ]);
 
-        if (!user || !chat) return null;
+        if (!user || !chat) return;
 
         const message = await this.holoService.upsertMessage(tgMessage, {
             chat_id: chat.id,
             user_id: user.id,
         });
 
-        if (!message) return null;
+        if (!message) return;
 
         const attachmentOptions = {
             message_id: message.id,
@@ -117,7 +117,5 @@ export class HoloController {
         if (tgMessage.video_note) {
             await this.holoService.createVideoNoteAttachment(tgMessage.video_note, attachmentOptions);
         }
-
-        return message.id;
     }
 }
