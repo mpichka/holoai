@@ -17,11 +17,15 @@ export class HoloController {
     }
 
     async handleTgMessage(ctx: ChatContext) {
-        // console.log(`\n${JSON.stringify(ctx)}\n`); // TODO: debug
+        console.log(`\n${JSON.stringify(ctx)}\n`); // TODO: debug
 
         if (ctx.isOwnBot) return;
 
-        await this.logMessage(ctx.message);
+        const messageId = await this.logMessage(ctx.message);
+
+        if (ctx.isEdited) return;
+
+        // TODO: Get message
 
         if (ctx.isReplyToBot) {
             // reply
@@ -46,20 +50,20 @@ export class HoloController {
         }
     }
 
-    async logMessage(tgMessage: Message) {
+    async logMessage(tgMessage: Message): Promise<number | null> {
         const [user, chat] = await Promise.all([
             this.holoService.upsertTgUser(tgMessage.from),
             this.holoService.upsertTgChat(tgMessage.chat),
         ]);
 
-        if (!user || !chat) return;
+        if (!user || !chat) return null;
 
         const message = await this.holoService.upsertMessage(tgMessage, {
             chat_id: chat.id,
             user_id: user.id,
         });
 
-        if (!message) return;
+        if (!message) return null;
 
         const attachmentOptions = {
             message_id: message.id,
@@ -113,5 +117,7 @@ export class HoloController {
         if (tgMessage.video_note) {
             await this.holoService.createVideoNoteAttachment(tgMessage.video_note, attachmentOptions);
         }
+
+        return message.id;
     }
 }

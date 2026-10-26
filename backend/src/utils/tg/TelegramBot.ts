@@ -137,16 +137,12 @@ export class TelegramBot {
         }
     }
 
-    async action(
-        chatId: number,
-        action: ChatAction,
-        options: Pick<SendOptions, 'messageThreadId'> = {},
-    ): Promise<SendChatActionResult> {
+    async action(chatId: number, action: ChatAction, messageThreadId = 1): Promise<SendChatActionResult> {
         try {
             const res = await this.bot.api.sendChatAction({
                 chat_id: chatId,
                 action,
-                message_thread_id: options.messageThreadId,
+                message_thread_id: messageThreadId,
             });
 
             return res;
