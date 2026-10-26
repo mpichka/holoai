@@ -16,14 +16,19 @@ export class HoloController {
     }
 
     async handleTgMessage(ctx: ChatContext) {
+        // console.log(`\n${JSON.stringify(ctx)}\n`); // TODO: debug
+
         if (ctx.isOwnBot) return;
 
         if (ctx.edited) {
-            const user = await this.holoService.upsertTgUser(ctx.edited.from);
-            const chat = await this.holoService.upsertTgChat(ctx.edited.chat);
+            const tgm = ctx.edited;
 
+            const user = await this.holoService.upsertTgUser(tgm.from);
+            const chat = await this.holoService.upsertTgChat(tgm.chat);
+
+            let message = null;
             if (user && chat) {
-                const message = await this.holoService.upsertMessage(ctx.edited, {
+                message = await this.holoService.upsertMessage(tgm, {
                     chat_id: chat.id,
                     user_id: user.id,
                 });

@@ -19,10 +19,12 @@ export class UserRepository {
     constructor(private readonly knex: Knex) {}
 
     async upsert(user: NewUserRecord): Promise<UserRecord> {
-        return this.knex('users')
+        const res = await this.knex('users')
             .insert(user)
             .onConflict('tg_id')
             .merge(['is_bot', 'first_name', 'last_name', 'username', 'language_code'])
-            .returning<UserRecord>('*');
+            .returning<UserRecord[]>('*');
+
+        return res[0];
     }
 }

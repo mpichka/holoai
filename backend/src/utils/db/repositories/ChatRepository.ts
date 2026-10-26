@@ -21,10 +21,12 @@ export class ChatRepository {
     constructor(private readonly knex: Knex) {}
 
     async upsert(chat: NewChatRecord): Promise<ChatRecord> {
-        return this.knex('chats')
+        const res = await this.knex('chats')
             .insert(chat)
             .onConflict('tg_id')
             .merge(['type', 'title', 'username', 'is_forum', 'is_direct_messages'])
-            .returning<ChatRecord>('*');
+            .returning<ChatRecord[]>('*');
+
+        return res[0];
     }
 }

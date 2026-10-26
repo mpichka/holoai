@@ -21,10 +21,12 @@ export class MessageRepository {
     constructor(private readonly knex: Knex) {}
 
     async upsert(message: NewMessageRecord): Promise<MessageRecord> {
-        return this.knex('messages')
+        const res = await this.knex('messages')
             .insert(message)
-            .onConflict(['message_tg_id'])
+            .onConflict('message_tg_id')
             .merge(['thread_tg_id', 'reply_to_id', 'sent_at', 'text'])
-            .returning<MessageRecord>('*');
+            .returning<MessageRecord[]>('*');
+
+        return res[0];
     }
 }
