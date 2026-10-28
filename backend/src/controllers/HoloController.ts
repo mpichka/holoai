@@ -1,4 +1,5 @@
 import type { Message } from 'node-telegram-bot-api';
+import type winston from 'winston';
 import { CHARACTER_NAMES } from '../constants';
 import type { FullMessageModel, HoloService } from '../services/HoloService';
 import type { TriggerService } from '../services/trigger';
@@ -13,17 +14,21 @@ export class HoloController {
     holoService: HoloService;
     triggerService: TriggerService;
     tg: TelegramBot;
+    logger: winston.Logger;
 
     constructor(container: Container) {
         this.holoService = container.HoloService;
         this.triggerService = container.TriggerService;
         this.tg = container.TelegramBot;
+        this.logger = container.LoggerFactory.createLogger('Holo');
     }
 
     async handleTgMessage(ctx: ChatContext) {
+        this.logMessage(ctx);
+
         if (ctx.isOwnBot) return; // don't react to own messages
 
-        await Promise.all([this.logMessage(ctx.message), this.logMessage(ctx.message.reply_to_message)]);
+        await Promise.all([this.createMessage(ctx.message), this.createMessage(ctx.message.reply_to_message)]);
 
         if (ctx.isEdited) return; // don't react to edit messages
 
@@ -58,10 +63,31 @@ export class HoloController {
             clearInterval(typing);
         }
 
-        await this.logReply(reply);
+        await this.createReply(reply);
     }
 
-    async logMessage(tgMessage?: Message) {
+    logMessage(ctx: ChatContext) {
+        let template = 'Incoming message.';
+
+        template += ctx.chatId ? ` chat:${ctx.chatId}` : '';
+        template += ctx.message.message_id ? `, message:${ctx.message.message_id}` : '';
+        template += ctx.message.message_thread_id ? `, thread:${ctx.message.message_thread_id}` : '';
+        template += ctx.message.from?.username ? ` from user "${ctx.message.from?.username}"` : '';
+
+        if (ctx.message.reply_to_message) {
+            const reply = ctx.message.reply_to_message;
+
+            template += '. In response to';
+            template += reply.chat.id ? ` chat:${reply.chat.id}` : '';
+            template += reply.message_id ? ` message:${reply.message_id}` : '';
+            template += reply.message_thread_id ? ` thread:${reply.chat.id}` : '';
+            template += reply.from?.username ? ` of user "${reply.from?.username}"` : '';
+        }
+
+        this.logger.info(template);
+    }
+
+    async createMessage(tgMessage?: Message) {
         if (!tgMessage) return;
 
         const [user, chat] = await Promise.all([
@@ -150,7 +176,7 @@ export class HoloController {
         if (nameTrigger) return nameTrigger;
     }
 
-    async logReply(reply: any) {
+    async createReply(reply: any) {
         // TODO:
         console.log(`\n\n${JSON.stringify(reply)}\n\n`);
     }
