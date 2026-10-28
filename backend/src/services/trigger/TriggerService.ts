@@ -2,7 +2,7 @@ import { TRIGGER } from './constants';
 import type { Trigger } from './types';
 
 export class TriggerService {
-    matchMention(text: string, botName?: string): Trigger | null {
+    matchMention(text?: string, botName?: string): Trigger | null {
         if (!text || !botName) return null;
 
         const escaped = botName.replace(/[^\w]/g, '\\$&');
@@ -10,7 +10,7 @@ export class TriggerService {
         return regex.test(text) ? { reason: TRIGGER.MENTION } : null;
     }
 
-    matchCharacterName(text: string, characterNames: string[]): Trigger | null {
+    matchCharacterName(text?: string, characterNames: string[] = []): Trigger | null {
         if (!text || !characterNames.length) return null;
 
         const alternation = characterNames.join('|');
@@ -18,7 +18,7 @@ export class TriggerService {
         return regex.test(text) ? { reason: TRIGGER.NAME } : null;
     }
 
-    matchCommand<C extends string>(text: string, botName: string, commands: C[]): Trigger<C> | null {
+    matchCommand<C extends string>(text?: string, botName?: string, commands: C[] = []): Trigger<C> | null {
         if (!text || !botName || !commands.length) return null;
 
         const escaped = botName.replace(/[^\w]/g, '\\$&');

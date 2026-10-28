@@ -1,7 +1,9 @@
 import type { Message } from 'node-telegram-bot-api';
 import { CHARACTER_NAMES } from '../constants';
-import type { HoloService } from '../services/HoloService';
+import type { FullMessageModel, HoloService } from '../services/HoloService';
 import type { TriggerService } from '../services/trigger';
+import { TRIGGER } from '../services/trigger/constants';
+import { Trigger } from '../services/trigger/types';
 import type { Container } from '../utils/di';
 import type { ChatContext, TelegramBot } from '../utils/tg';
 
@@ -17,37 +19,23 @@ export class HoloController {
     }
 
     async handleTgMessage(ctx: ChatContext) {
-        console.log(`\n${JSON.stringify(ctx)}\n`); // TODO: debug
-
-        if (ctx.isOwnBot) return;
+        if (ctx.isOwnBot) return; // don't react to own messages
 
         await this.logMessage(ctx.message);
 
-        if (ctx.isEdited) return;
+        if (ctx.isEdited) return; // don't react to edit messages
 
         const message = await this.holoService.getFullMessage(ctx.chatId, ctx.message.message_id);
 
-        if (ctx.isReplyToBot) {
-            // reply
-        }
+        if (!message) return; // skip broken messages
 
-        const isMentionCall = this.triggerService.matchMention('', this.tg.botName);
+        const trigger = this.matchTrigger(ctx);
 
-        if (isMentionCall) {
-            // mention
-        }
+        if (!trigger) return; // skip unrelated messages
 
-        const isNameCall = this.triggerService.matchCharacterName('', CHARACTER_NAMES);
+        const reply = await this.generateReply(message, trigger);
 
-        if (isNameCall) {
-            // name
-        }
-
-        const isCommand = this.triggerService.matchCommand('', this.tg.botName, []);
-
-        if (isCommand) {
-            // command
-        }
+        await this.logReply(reply);
     }
 
     async logMessage(tgMessage: Message) {
@@ -118,4 +106,29 @@ export class HoloController {
             await this.holoService.createVideoNoteAttachment(tgMessage.video_note, attachmentOptions);
         }
     }
+
+    matchTrigger(ctx: ChatContext): Trigger | undefined {
+        const message = ctx.message.text;
+
+        const commandTrigger = this.triggerService.matchCommand(message, this.tg.botName, []);
+
+        if (commandTrigger) return commandTrigger;
+
+        if (ctx.isReplyToBot) return { reason: TRIGGER.REPLY };
+
+        const mentionTrigger = this.triggerService.matchMention(message, this.tg.botName);
+
+        if (mentionTrigger) return mentionTrigger;
+
+        const nameTrigger = this.triggerService.matchCharacterName(message, CHARACTER_NAMES);
+
+        if (nameTrigger) return nameTrigger;
+    }
+
+    async logReply(reply: any) {
+        // TODO:
+        console.log(`\n\n${JSON.stringify(reply)}\n\n`);
+    }
+
+    async generateReply(message: FullMessageModel, trigger: Trigger) {}
 }
