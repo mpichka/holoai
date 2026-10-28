@@ -11,4 +11,4 @@ export const CHAT_ACTION = Object.freeze({
     upload_video_note: 'upload_video_note',
 });
 
-export type ChatAction = typeof CHAT_ACTION[keyof typeof CHAT_ACTION];
+export type ChatAction = (typeof CHAT_ACTION)[keyof typeof CHAT_ACTION];
