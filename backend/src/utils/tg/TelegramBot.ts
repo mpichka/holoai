@@ -7,7 +7,8 @@ import {
 } from 'node-telegram-bot-api';
 import type winston from 'winston';
 import type { Container } from '../di';
-import { ChatAction, ChatContext, SendOptions } from './types';
+import type { ChatAction } from './constants';
+import { ChatContext, SendOptions } from './types';
 import { isReplyToBot, mimeTypeFromPath, threadIdOf } from './utils';
 
 export class TelegramBot {

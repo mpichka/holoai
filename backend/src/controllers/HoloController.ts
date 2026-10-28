@@ -5,7 +5,9 @@ import type { TriggerService } from '../services/trigger';
 import { TRIGGER } from '../services/trigger/constants';
 import { Trigger } from '../services/trigger/types';
 import type { Container } from '../utils/di';
-import type { ChatContext, TelegramBot } from '../utils/tg';
+import { CHAT_ACTION, type ChatContext, type TelegramBot } from '../utils/tg';
+
+const ACTION_RESEND_TIMEOUT = 4500; // 4,5s
 
 export class HoloController {
     holoService: HoloService;
@@ -33,7 +35,17 @@ export class HoloController {
 
         if (!trigger) return; // skip unrelated messages
 
-        const reply = await this.generateReply(message, trigger);
+        await this.tg.action(message.chatId, CHAT_ACTION.TYPING, message.threadTgId);
+        const typing = setInterval(() => {
+            this.tg.action(message.chatId, CHAT_ACTION.TYPING, message.threadTgId);
+        }, ACTION_RESEND_TIMEOUT);
+
+        let reply;
+        try {
+            reply = await this.generateReply(message, trigger);
+        } finally {
+            clearInterval(typing);
+        }
 
         await this.logReply(reply);
     }
