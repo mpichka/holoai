@@ -332,4 +332,8 @@ export class HoloService {
             attachments,
         } as FullMessageModel;
     }
+
+    markAsReply(messageId: number, repliedMessageId: number) {
+        return this.messageRepository.markAsReply(messageId, repliedMessageId);
+    }
 }

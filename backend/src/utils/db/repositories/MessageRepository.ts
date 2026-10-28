@@ -50,4 +50,8 @@ export class MessageRepository {
             .select(MESSAGE_SELECT_ALIASES)
             .orderBy('a.id');
     }
+
+    async markAsReply(id: number, reply_to_id: number) {
+        await this.knex('messages').where({ id }).update({ reply_to_id });
+    }
 }

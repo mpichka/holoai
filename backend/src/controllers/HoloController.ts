@@ -27,13 +27,18 @@ export class HoloController {
 
         if (ctx.isEdited) return; // don't react to edit messages
 
-        const [message, replyMessage] = await Promise.all([
+        const [message, repliedMessage] = await Promise.all([
             this.holoService.getFullMessage(ctx.chatId, ctx.message.message_id),
             this.holoService.getFullMessage(
                 ctx.message.reply_to_message?.chat.id,
                 ctx.message.reply_to_message?.message_id,
             ),
         ]);
+
+        if (message && repliedMessage) {
+            await this.holoService.markAsReply(message.id, repliedMessage.id);
+            message.replyToId = repliedMessage.id;
+        }
 
         if (!message) return; // skip broken messages
 
@@ -48,7 +53,7 @@ export class HoloController {
 
         let reply;
         try {
-            reply = await this.generateReply(trigger, message, replyMessage);
+            reply = await this.generateReply(trigger, message, repliedMessage);
         } finally {
             clearInterval(typing);
         }
