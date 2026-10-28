@@ -304,7 +304,9 @@ export class HoloService {
         });
     }
 
-    async getFullMessage(chat_tg_id: number, message_tg_id: number) {
+    async getFullMessage(chat_tg_id?: number, message_tg_id?: number) {
+        if (!chat_tg_id || !message_tg_id) return null;
+
         const rows = await this.messageRepository.getMessage(chat_tg_id, message_tg_id);
 
         if (!rows.length) return null;

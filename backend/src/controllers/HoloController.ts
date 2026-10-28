@@ -23,11 +23,17 @@ export class HoloController {
     async handleTgMessage(ctx: ChatContext) {
         if (ctx.isOwnBot) return; // don't react to own messages
 
-        await this.logMessage(ctx.message);
+        await Promise.all([this.logMessage(ctx.message), this.logMessage(ctx.message.reply_to_message)]);
 
         if (ctx.isEdited) return; // don't react to edit messages
 
-        const message = await this.holoService.getFullMessage(ctx.chatId, ctx.message.message_id);
+        const [message, replyMessage] = await Promise.all([
+            this.holoService.getFullMessage(ctx.chatId, ctx.message.message_id),
+            this.holoService.getFullMessage(
+                ctx.message.reply_to_message?.chat.id,
+                ctx.message.reply_to_message?.message_id,
+            ),
+        ]);
 
         if (!message) return; // skip broken messages
 
@@ -42,7 +48,7 @@ export class HoloController {
 
         let reply;
         try {
-            reply = await this.generateReply(message, trigger);
+            reply = await this.generateReply(trigger, message, replyMessage);
         } finally {
             clearInterval(typing);
         }
@@ -50,7 +56,9 @@ export class HoloController {
         await this.logReply(reply);
     }
 
-    async logMessage(tgMessage: Message) {
+    async logMessage(tgMessage?: Message) {
+        if (!tgMessage) return;
+
         const [user, chat] = await Promise.all([
             this.holoService.upsertTgUser(tgMessage.from),
             this.holoService.upsertTgChat(tgMessage.chat),
@@ -142,5 +150,5 @@ export class HoloController {
         console.log(`\n\n${JSON.stringify(reply)}\n\n`);
     }
 
-    async generateReply(message: FullMessageModel, trigger: Trigger) {}
+    async generateReply(trigger: Trigger, message: FullMessageModel, reply?: FullMessageModel | null) {}
 }
