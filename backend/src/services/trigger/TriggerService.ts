@@ -18,7 +18,7 @@ export class TriggerService {
         return regex.test(text) ? { reason: TRIGGER.NAME } : null;
     }
 
-    matchCommand<C extends string>(text?: string, botName?: string, commands: C[] = []): Trigger<C> | null {
+    matchCommand(text?: string, botName?: string, commands: string[] = []): Trigger | null {
         if (!text || !botName || !commands.length) return null;
 
         const escaped = botName.replace(/[^\w]/g, '\\$&');

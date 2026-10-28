@@ -1,6 +1,7 @@
 import type { HoloController } from '../../controllers/HoloController';
 import type { FileDescriberService } from '../../services/describer';
-import type { HoloService } from '../../services/HoloService';
+import type { HoloAIService } from '../../services/holo/HoloAIService';
+import type { HoloService } from '../../services/holo/HoloService';
 import type { TriggerService } from '../../services/trigger';
 import type { Database } from '../db';
 import type { Llama } from '../llama';
@@ -22,4 +23,5 @@ export type Container = {
     FileDescriberService: FileDescriberService;
     TriggerService: TriggerService;
     HoloService: HoloService;
+    HoloAIService: HoloAIService;
 };

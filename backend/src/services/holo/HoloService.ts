@@ -21,7 +21,7 @@ import {
     USER_COLS,
     UserModel,
     pickFromAlias,
-} from '../utils/db';
+} from '../../utils/db';
 import {
     ATTACHMENT_TYPE,
     type AttachmentRecord,
@@ -38,8 +38,8 @@ import {
     type StickerType,
     type UserRecord,
     type UserRepository,
-} from '../utils/db/repositories';
-import type { Container } from '../utils/di';
+} from '../../utils/db/repositories';
+import type { Container } from '../../utils/di';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // One day
 

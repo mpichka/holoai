@@ -1,7 +1,8 @@
 import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
-import { CHARACTER_NAMES } from '../constants';
-import type { FullMessageModel, HoloService } from '../services/HoloService';
+import { CHARACTER_NAMES, COMMANDS } from '../constants';
+import type { HoloAIService } from '../services/holo/HoloAIService';
+import type { FullMessageModel, HoloService } from '../services/holo/HoloService';
 import type { TriggerService } from '../services/trigger';
 import { TRIGGER } from '../services/trigger/constants';
 import { Trigger } from '../services/trigger/types';
@@ -12,12 +13,14 @@ const ACTION_RESEND_TIMEOUT = 4500; // 4,5s
 
 export class HoloController {
     holoService: HoloService;
+    holoAIService: HoloAIService;
     triggerService: TriggerService;
     tg: TelegramBot;
     logger: winston.Logger;
 
     constructor(container: Container) {
         this.holoService = container.HoloService;
+        this.holoAIService = container.HoloAIService;
         this.triggerService = container.TriggerService;
         this.tg = container.TelegramBot;
         this.logger = container.LoggerFactory.createLogger('Holo');
@@ -51,9 +54,9 @@ export class HoloController {
 
         if (!trigger) return; // skip unrelated messages
 
-        await this.tg.action(message.chatId, CHAT_ACTION.TYPING, message.threadTgId);
+        await this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
         const typing = setInterval(() => {
-            this.tg.action(message.chatId, CHAT_ACTION.TYPING, message.threadTgId);
+            this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
         }, ACTION_RESEND_TIMEOUT);
 
         let reply;
@@ -161,7 +164,7 @@ export class HoloController {
     matchTrigger(ctx: ChatContext): Trigger | undefined {
         const message = ctx.message.text;
 
-        const commandTrigger = this.triggerService.matchCommand(message, this.tg.botName, []);
+        const commandTrigger = this.triggerService.matchCommand(message, this.tg.botName, COMMANDS);
 
         if (commandTrigger) return commandTrigger;
 
@@ -181,5 +184,17 @@ export class HoloController {
         console.log(`\n\n${JSON.stringify(reply)}\n\n`);
     }
 
-    async generateReply(trigger: Trigger, message: FullMessageModel, reply?: FullMessageModel | null) {}
+    async generateReply(trigger: Trigger, message: FullMessageModel, reply?: FullMessageModel | null) {
+        this.logger.info(`Generating reply for the ${message.id} for reason: ${trigger.reason}`);
+
+        const command = trigger.command ? trigger : await this.holoAIService.defineCommand(message.text);
+
+        console.log(command);
+
+        if (!command) {
+            // TODO: generic response
+
+            return;
+        }
+    }
 }
