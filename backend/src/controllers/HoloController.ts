@@ -1,11 +1,13 @@
 import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
 import { CHARACTER_NAMES, COMMAND, COMMANDS } from '../constants';
+import type { FileDescriberService } from '../services/describer';
 import type { HoloAIService } from '../services/holo/HoloAIService';
 import type { FullMessageModel, HoloService } from '../services/holo/HoloService';
 import type { TriggerService } from '../services/trigger';
 import { TRIGGER } from '../services/trigger/constants';
-import { Trigger } from '../services/trigger/types';
+import type { Trigger } from '../services/trigger/types';
+import { AUDIO_TYPES } from '../utils/db/repositories';
 import type { Container } from '../utils/di';
 import { CHAT_ACTION, type ChatContext, type TelegramBot } from '../utils/tg';
 
@@ -15,6 +17,7 @@ export class HoloController {
     holoService: HoloService;
     holoAIService: HoloAIService;
     triggerService: TriggerService;
+    fileDescriberService: FileDescriberService;
     tg: TelegramBot;
     logger: winston.Logger;
 
@@ -22,6 +25,7 @@ export class HoloController {
         this.holoService = container.HoloService;
         this.holoAIService = container.HoloAIService;
         this.triggerService = container.TriggerService;
+        this.fileDescriberService = container.FileDescriberService;
         this.tg = container.TelegramBot;
         this.logger = container.LoggerFactory.createLogger('Holo');
     }
@@ -229,6 +233,58 @@ export class HoloController {
                     break;
                 }
                 case COMMAND.TRANSCRIBE: {
+                    let aiRes = await this.holoAIService.taskAcknowledge();
+
+                    let tgMessage;
+                    if (aiRes) {
+                        tgMessage = await this.tg.sendMessage(aiRes, message.chat.tgId, {
+                            messageThreadId: message.threadTgId,
+                            replyToMessageId: message.messageTgId,
+                        });
+                    }
+
+                    if (!tgMessage) {
+                        this.logger.error('Cannot send message to tg');
+                        return;
+                    }
+
+                    if (reply) {
+                        const audioAttachments = reply.attachments.filter((file) => AUDIO_TYPES.includes(file.type));
+
+                        if (!audioAttachments.length) {
+                            const aiRes = await this.holoAIService.couldNotTranscribe();
+
+                            if (aiRes) {
+                                await this.tg.editMessage(aiRes, tgMessage.chat.id, tgMessage?.message_id);
+                            }
+
+                            break;
+                        }
+
+                        const transcriptions = [];
+                        for (const audio of audioAttachments) {
+                            const attachment = await this.fileDescriberService.describe(audio);
+                            transcriptions.push(attachment?.ai_description);
+                        }
+
+                        const aiRes = await this.holoAIService.generateTranscribeTemplateResponse();
+
+                        if (aiRes) {
+                            const res = this.fillTemplate(aiRes, {
+                                username: reply.user.userName || reply.user.firstName || 'користувача',
+                                transcription: transcriptions.join('\n\n'),
+                            });
+
+                            await this.tg.editMessage(res, tgMessage.chat.id, tgMessage?.message_id);
+                        }
+                    }
+
+                    aiRes = await this.holoAIService.couldNotTranscribe();
+
+                    if (aiRes) {
+                        await this.tg.editMessage(aiRes, tgMessage.chat.id, tgMessage?.message_id);
+                    }
+
                     break;
                 }
                 case COMMAND.TRANSLATE: {
@@ -238,5 +294,10 @@ export class HoloController {
         } else {
             // const commands = await this.holoAIService.defineCommand(message.text);
         }
+    }
+
+    // TODO: move to the utils when I'll more than one template helper
+    private fillTemplate(template: string, values: Record<string, string>): string {
+        return template.replace(/\{(\w+)\}/g, (match, key) => values[key] ?? match);
     }
 }

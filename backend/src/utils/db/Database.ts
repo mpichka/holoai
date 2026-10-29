@@ -6,7 +6,6 @@ import {
     AttachmentRepository,
     AttachmentToMessageRepository,
     ChatRepository,
-    FileRepository,
     MessageRepository,
     UserRepository,
 } from './repositories';
@@ -16,7 +15,6 @@ export class Database {
     private logger;
 
     userRepository: UserRepository;
-    fileRepository: FileRepository;
     chatRepository: ChatRepository;
     messageRepository: MessageRepository;
     attachmentRepository: AttachmentRepository;
@@ -51,7 +49,6 @@ export class Database {
         this.logger.info(`Using SQLite database at ${filename}`);
 
         this.userRepository = new UserRepository(this.knex);
-        this.fileRepository = new FileRepository(this.knex);
         this.chatRepository = new ChatRepository(this.knex);
         this.messageRepository = new MessageRepository(this.knex);
         this.attachmentRepository = new AttachmentRepository(this.knex);

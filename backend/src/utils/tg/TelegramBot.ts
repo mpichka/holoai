@@ -105,7 +105,7 @@ export class TelegramBot {
         }
     }
 
-    async editMessage(text: string, messageId: number, chatId: number): Promise<EditMessageTextResult> {
+    async editMessage(text: string, chatId: number, messageId: number): Promise<EditMessageTextResult> {
         try {
             const edited = await this.bot.api.editMessageText({
                 chat_id: chatId,

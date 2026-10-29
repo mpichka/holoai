@@ -13,6 +13,13 @@ export const ATTACHMENT_TYPE = Object.freeze({
     VIDEO_NOTE: 41,
 });
 
+export const AUDIO_TYPES: number[] = [ATTACHMENT_TYPE.AUDIO, ATTACHMENT_TYPE.VOICE];
+export const STICKER_TYPES: number[] = [
+    ATTACHMENT_TYPE.STICKER_PHOTO,
+    ATTACHMENT_TYPE.STICKER_ANIMATION,
+    ATTACHMENT_TYPE.STICKER_VIDEO,
+];
+
 export type StickerType =
     | (typeof ATTACHMENT_TYPE)['STICKER_PHOTO']
     | (typeof ATTACHMENT_TYPE)['STICKER_ANIMATION']
@@ -49,5 +56,9 @@ export class AttachmentRepository {
             .returning<AttachmentRecord[]>('*');
 
         return res[0];
+    }
+
+    async setAiDescription(id: number, ai_description: string) {
+        await this.knex('attachments').where({ id }).update({ ai_description });
     }
 }

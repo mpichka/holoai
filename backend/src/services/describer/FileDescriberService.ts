@@ -1,18 +1,19 @@
 import type winston from 'winston';
-import type { FileRecord, FileRepository } from '../../utils/db/repositories';
+import { AttachmentType, STICKER_TYPES, type AttachmentRepository } from '../../utils/db/repositories';
 import type { Container } from '../../utils/di';
 import type { TelegramBot } from '../../utils/tg';
+import { LinkedAttachmentModel } from '../holo/HoloService';
 import { AudioDescriber } from './audio/AudioDescriber';
-import { MEDIA_KIND, type MediaKind } from './constants';
+import { MEDIA_KIND, MediaKind } from './constants';
 import { ImageDescriber } from './image/ImageDescriber';
 import { VideoDescriber } from './video/VideoDescriber';
 
 export class FileDescriberService {
-    imageDescriber;
-    audioDescriber;
-    videoDescriber;
+    imageDescriber: ImageDescriber;
+    audioDescriber: AudioDescriber;
+    videoDescriber: VideoDescriber;
     logger: winston.Logger;
-    fileRepository: FileRepository;
+    attachmentRepository: AttachmentRepository;
     tg: TelegramBot;
 
     constructor(container: Container) {
@@ -21,22 +22,18 @@ export class FileDescriberService {
         this.videoDescriber = new VideoDescriber(container.Llama);
 
         this.logger = container.LoggerFactory.createLogger('FileDescriber');
-        this.fileRepository = container.Database.fileRepository;
+        this.attachmentRepository = container.Database.attachmentRepository;
         this.tg = container.TelegramBot;
     }
 
-    async describe(file: FileRecord) {
-        const existingFile = await this.fileRepository.findByUniqueTgId(file.telegramFileUniqueId);
-
-        if (existingFile?.description?.trim()) return existingFile;
-
+    async describe(attachment: LinkedAttachmentModel): Promise<LinkedAttachmentModel | undefined> {
         try {
-            const { data: tgData, mimeType: tgMimeType } = await this.tg.getFileContent(file.telegramFileId);
+            const { data: tgData, mimeType: tgMimeType } = await this.tg.getFileContent(attachment.rel.file_tg_id);
 
             const data = tgData.toString('base64');
-            const mimeType = tgMimeType || file.mimeType;
+            const mimeType = tgMimeType || attachment.mime_type;
 
-            const kind = this.resolveKind(file.type, mimeType);
+            const kind = this.resolveKind(attachment.type, mimeType);
 
             let description: string | null = null;
             switch (kind) {
@@ -49,45 +46,34 @@ export class FileDescriberService {
                     break;
                 }
                 case 'video': {
-                    description = await this.videoDescriber.describe(data, mimeType, file.duration);
+                    description = await this.videoDescriber.describe(data, mimeType, attachment.duration);
                     break;
                 }
                 default: {
-                    const message = `Could not determine a describable media kind (mime type: ${(tgMimeType || file.mimeType) ?? 'unknown'})`;
-
-                    this.logger.warn(message);
-
-                    await this.markBroken(file, message);
-
+                    const message = `Could not determine a describable media kind (mime type: ${mimeType || 'unknown'})`;
+                    this.logger.warn(`Cannot describe file ${attachment?.id} (${attachment?.type}): ${message}`);
                     return;
                 }
             }
 
             if (!description) {
                 const message = `llama returned an empty description`;
-
-                this.logger.warn(message);
-
-                await this.markBroken(file, message);
-
+                this.logger.warn(`Cannot describe file ${attachment?.id} (${attachment?.type}): ${message}`);
                 return;
             }
 
-            await this.fileRepository.setDescription(file.id, description);
-
-            return this.fileRepository.findById(file.id);
+            await this.attachmentRepository.setAiDescription(attachment.id, description);
+            attachment.ai_description = description;
+            return attachment;
         } catch (error) {
             const message = JSON.stringify({ error });
-
-            this.logger.warn(message);
-
-            await this.markBroken(file, message);
+            this.logger.warn(`Cannot describe file ${attachment?.id} (${attachment?.type}): ${message}`);
         }
     }
 
-    private resolveKind(type?: string, mimeType?: string): MediaKind | null {
-        if (type && type !== 'sticker') {
-            const kind = MEDIA_KIND[type];
+    private resolveKind(type?: number, mimeType?: string): MediaKind | null {
+        if (type && !STICKER_TYPES.includes(type)) {
+            const kind = MEDIA_KIND[type as AttachmentType];
             if (kind) return kind;
         }
 
@@ -95,17 +81,5 @@ export class FileDescriberService {
         if (mimeType?.startsWith('video/')) return 'video';
 
         return null;
-    }
-
-    private async markBroken(file: FileRecord, reason: string): Promise<void> {
-        this.logger.warn(`Cannot describe file ${file?.id} (${file?.type}): ${reason}`);
-
-        if (!file.id) return;
-
-        try {
-            await this.fileRepository.setDescriptionError(file.id, reason);
-        } catch (err) {
-            this.logger.warn(`Cannot write description error for file ${file.id}: ${err}`);
-        }
     }
 }
