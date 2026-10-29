@@ -54,4 +54,8 @@ export class MessageRepository {
     async markAsReply(id: number, reply_to_id: number) {
         await this.knex('messages').where({ id }).update({ reply_to_id });
     }
+
+    async deleteById(id: number) {
+        await this.knex('messages').where({ id }).delete();
+    }
 }

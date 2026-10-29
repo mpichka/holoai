@@ -1,6 +1,6 @@
 import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
-import { CHARACTER_NAMES, COMMANDS } from '../constants';
+import { CHARACTER_NAMES, COMMAND, COMMANDS } from '../constants';
 import type { HoloAIService } from '../services/holo/HoloAIService';
 import type { FullMessageModel, HoloService } from '../services/holo/HoloService';
 import type { TriggerService } from '../services/trigger';
@@ -63,6 +63,7 @@ export class HoloController {
         try {
             reply = await this.generateReply(trigger, message, repliedMessage);
         } finally {
+            this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
             clearInterval(typing);
         }
 
@@ -187,14 +188,55 @@ export class HoloController {
     async generateReply(trigger: Trigger, message: FullMessageModel, reply?: FullMessageModel | null) {
         this.logger.info(`Generating reply for the ${message.id} for reason: ${trigger.reason}`);
 
-        const command = trigger.command ? trigger : await this.holoAIService.defineCommand(message.text);
+        if (trigger.command) {
+            switch (trigger.command) {
+                case COMMAND.DELETE: {
+                    if (reply && reply.user.tgId === this.tg.botId) {
+                        try {
+                            await this.tg.deleteMessage(reply.chat.tgId, reply.messageTgId);
 
-        console.log(command);
+                            await this.holoService.deleteMessage(reply.id);
+                        } catch (error) {
+                            this.logger.warn(
+                                `Couldn't delete the message due error. chatId:${reply.chat.tgId}, messageId:${reply.messageTgId}.\nError: ${error}`,
+                            );
 
-        if (!command) {
-            // TODO: generic response
+                            const aiRes = await this.holoAIService.couldNotDeleteOldReply();
 
-            return;
+                            if (aiRes) {
+                                await this.tg.sendMessage(aiRes, message.chat.tgId, {
+                                    messageThreadId: message.threadTgId,
+                                    replyToMessageId: message.messageTgId,
+                                });
+                            }
+                        }
+
+                        break;
+                    }
+
+                    const aiRes = await this.holoAIService.couldNotDeleteReply();
+
+                    if (aiRes) {
+                        await this.tg.sendMessage(aiRes, message.chat.tgId, {
+                            messageThreadId: message.threadTgId,
+                            replyToMessageId: message.messageTgId,
+                        });
+                    }
+
+                    break;
+                }
+                case COMMAND.SUMMARIZE: {
+                    break;
+                }
+                case COMMAND.TRANSCRIBE: {
+                    break;
+                }
+                case COMMAND.TRANSLATE: {
+                    break;
+                }
+            }
+        } else {
+            // const commands = await this.holoAIService.defineCommand(message.text);
         }
     }
 }

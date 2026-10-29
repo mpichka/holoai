@@ -336,4 +336,8 @@ export class HoloService {
     markAsReply(messageId: number, repliedMessageId: number) {
         return this.messageRepository.markAsReply(messageId, repliedMessageId);
     }
+
+    deleteMessage(id: number) {
+        return this.messageRepository.deleteById(id);
+    }
 }

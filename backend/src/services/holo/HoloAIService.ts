@@ -1,6 +1,11 @@
 import type { Container } from '../../utils/di';
 import { Llama } from '../../utils/llama';
-import { DEFYING_COMMANDS_SYSTEM_PROMPT } from './prompts';
+import {
+    DEFYING_COMMANDS_SYSTEM_PROMPT,
+    FAIL_TO_DELETE_OLD_REPLY_USER_PROMPT,
+    FAIL_TO_DELETE_REPLY_SYSTEM_PROMPT,
+    FAIL_TO_DELETE_REPLY_USER_PROMPT,
+} from './prompts';
 import { Command } from './types';
 
 export class HoloAIService {
@@ -27,5 +32,35 @@ export class HoloAIService {
         const data = Llama.toResponse(res);
 
         return data ? JSON.parse(data) : [];
+    }
+
+    async couldNotDeleteReply(): Promise<string | null> {
+        const res = await this.llama.request([
+            {
+                role: 'system',
+                content: FAIL_TO_DELETE_REPLY_SYSTEM_PROMPT,
+            },
+            {
+                role: 'user',
+                content: FAIL_TO_DELETE_REPLY_USER_PROMPT,
+            },
+        ]);
+
+        return Llama.toResponse(res);
+    }
+
+    async couldNotDeleteOldReply(): Promise<string | null> {
+        const res = await this.llama.request([
+            {
+                role: 'system',
+                content: FAIL_TO_DELETE_REPLY_SYSTEM_PROMPT,
+            },
+            {
+                role: 'user',
+                content: FAIL_TO_DELETE_OLD_REPLY_USER_PROMPT,
+            },
+        ]);
+
+        return Llama.toResponse(res);
     }
 }
