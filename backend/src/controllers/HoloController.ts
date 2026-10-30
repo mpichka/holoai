@@ -269,8 +269,15 @@ export class HoloController {
                         const aiRes = await this.holoAIService.generateTranscribeTemplateResponse();
 
                         if (aiRes) {
+                            let username = 'невідомцю';
+                            if (reply.user.firstName) {
+                                username = `${reply.user.firstName} ${reply.user.lastName}`.trim();
+                            } else if (reply.user.userName) {
+                                username = reply.user.userName;
+                            }
+
                             const res = this.fillTemplate(aiRes, {
-                                username: reply.user.userName || reply.user.firstName || 'користувача',
+                                username,
                                 transcription: transcriptions.join('\n\n'),
                             });
 
