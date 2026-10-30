@@ -270,8 +270,8 @@ export class HoloController {
 
                         if (aiRes) {
                             let username = 'невідомцю';
-                            if (reply.user.firstName) {
-                                username = `${reply.user.firstName} ${reply.user.lastName}`.trim();
+                            if (reply.user.firstName?.trim()) {
+                                username = `${reply.user.firstName} ${reply.user.lastName || ''}`.trim();
                             } else if (reply.user.userName) {
                                 username = reply.user.userName;
                             }
