@@ -33,12 +33,9 @@ export class HoloController {
     async handleTgMessage(ctx: ChatContext) {
         this.logMessage(ctx);
 
-        if (ctx.isOwnBot) return; // don't react to own messages
-
         await Promise.all([this.createMessage(ctx.message), this.createMessage(ctx.message.reply_to_message)]);
 
-        if (ctx.isEdited) return; // don't react to edit messages
-
+        // TODO: need to optimize creation of reply message with reply_to_id field
         const [message, repliedMessage] = await Promise.all([
             this.holoService.getFullMessage(ctx.chatId, ctx.message.message_id),
             this.holoService.getFullMessage(
@@ -51,6 +48,8 @@ export class HoloController {
             await this.holoService.markAsReply(message.id, repliedMessage.id);
             message.replyToId = repliedMessage.id;
         }
+
+        if (ctx.isEdited || ctx.isOwnBot) return; // don't react to edit messages
 
         if (!message) return; // skip broken messages
 
@@ -277,6 +276,8 @@ export class HoloController {
 
                             await this.tg.editMessage(res, tgMessage.chat.id, tgMessage?.message_id);
                         }
+
+                        break;
                     }
 
                     aiRes = await this.holoAIService.couldNotTranscribe();

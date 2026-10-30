@@ -14,6 +14,11 @@ exports.up = async function (knex) {
             PRIMARY KEY ("message_id", "attachment_id")
         ) WITHOUT ROWID
     `);
+
+    await knex.raw(`
+        CREATE UNIQUE INDEX "idx_attachments_to_messages_unique"
+        ON "attachments_to_messages" ("message_id", "attachment_id")
+    `);
 };
 
 /**

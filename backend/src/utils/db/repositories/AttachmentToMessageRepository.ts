@@ -15,16 +15,11 @@ export class AttachmentToMessageRepository {
     constructor(private readonly knex: Knex) {}
 
     async upsert(payload: AttachmentToMessageRecord): Promise<AttachmentToMessageRecord> {
-        let res: AttachmentToMessageRecord[] = await this.knex('attachments_to_messages').where({
-            attachment_id: payload.attachment_id,
-            message_id: payload.message_id,
-        });
-
-        if (!res) {
-            res = await this.knex('attachments_to_messages')
-                .insert(payload)
-                .returning<AttachmentToMessageRecord[]>('*');
-        }
+        const res = await this.knex('attachments_to_messages')
+            .insert(payload)
+            .onConflict(['attachment_id', 'message_id'])
+            .merge(['file_tg_id', 'caption', 'media_group_id'])
+            .returning<AttachmentToMessageRecord[]>('*');
 
         return res[0];
     }
