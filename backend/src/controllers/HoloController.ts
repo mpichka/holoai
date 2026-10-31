@@ -200,8 +200,34 @@ export class HoloController {
                     break;
                 }
             }
-        } else {
-            // const commands = await this.holoAIService.defineCommand(message.text);
+        }
+
+        const commands = await this.holoAIService.defineCommand(message.text);
+
+        for (const command of commands) {
+            switch (command.category) {
+                case 'overriding_instructions': {
+                    // TODO: prevent ovveriding chatacter's identity
+                    return;
+                }
+                case 'greeting': {
+                    // TODO: casual greeting
+                    break;
+                }
+                case 'delete': {
+                    return this.execDeleteCommand(message, reply);
+                }
+                case 'request': {
+                    switch (command.type) {
+                        case COMMAND.TRANSCRIBE: {
+                            return this.execFileDescribeCommand(COMMAND.TRANSCRIBE, AUDIO_TYPES, message, reply);
+                        }
+                        case COMMAND.DESCRIBE: {
+                            return this.execFileDescribeCommand(COMMAND.DESCRIBE, NON_AUDIO_TYPES, message, reply);
+                        }
+                    }
+                }
+            }
         }
     }
 
