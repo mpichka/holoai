@@ -204,12 +204,15 @@ export class HoloController {
 
         const commands = await this.holoAIService.defineCommand(message.text);
 
+        const ovverideAttempt = commands.find((command) => command.category === 'overriding_instructions');
+
+        if (ovverideAttempt) {
+            // TODO: prevent ovveriding chatacter's identity
+            return;
+        }
+
         for (const command of commands) {
             switch (command.category) {
-                case 'overriding_instructions': {
-                    // TODO: prevent ovveriding chatacter's identity
-                    return;
-                }
                 case 'greeting': {
                     // TODO: casual greeting
                     break;
