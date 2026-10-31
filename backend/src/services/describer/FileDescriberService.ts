@@ -44,7 +44,7 @@ export class FileDescriberService {
                     break;
                 }
                 case 'audio': {
-                    description = await this.audioDescriber.describe(data, mimeType);
+                    description = await this.audioDescriber.describe(data, mimeType, attachment.performer);
                     break;
                 }
                 case 'video': {

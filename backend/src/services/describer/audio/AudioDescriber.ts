@@ -14,13 +14,14 @@ import {
 export class AudioDescriber {
     constructor(private readonly llama: Llama) {}
 
-    async describe(data: string, mimeType?: string): Promise<string | null> {
+    async describe(data: string, mimeType?: string, performer?: string): Promise<string | null> {
         let file: string | null = data;
 
         if (mimeType !== 'audio/mp3') {
             file = await convertToMp3(data);
         }
 
+        const performerPayload = performer ? [Llama.toContentPart('text', `Performer: ${performer}`)] : [];
         const payload = Llama.toContentPart('audio', file || data, mimeType);
 
         const categoryRes = await this.llama.request(
@@ -36,6 +37,7 @@ export class AudioDescriber {
                             type: 'text',
                             text: AUDIO_CATEGORY_USER_PROMPT,
                         },
+                        ...(performer ? performerPayload : []),
                         payload,
                     ],
                 },
@@ -58,6 +60,7 @@ export class AudioDescriber {
                                 type: 'text',
                                 text: AUDIO_SPEECH_USER_PROMPT,
                             },
+                            ...(performer ? performerPayload : []),
                             payload,
                         ],
                     },
@@ -78,6 +81,7 @@ export class AudioDescriber {
                                 type: 'text',
                                 text: AUDIO_MUSIC_USER_PROMPT,
                             },
+                            ...(performer ? performerPayload : []),
                             payload,
                         ],
                     },
@@ -98,6 +102,7 @@ export class AudioDescriber {
                                 type: 'text',
                                 text: AUDIO_ILLEGIBLE_USER_PROMPT,
                             },
+                            ...(performer ? performerPayload : []),
                             payload,
                         ],
                     },
