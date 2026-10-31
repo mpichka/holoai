@@ -188,7 +188,7 @@ export class HoloController {
                     return await this.execDeleteCommand(message, reply);
                 }
                 case COMMAND.SUMMARIZE: {
-                    break;
+                    return;
                 }
                 case COMMAND.TRANSCRIBE: {
                     return this.execFileDescribeCommand(COMMAND.TRANSCRIBE, AUDIO_TYPES, message, reply);
@@ -197,7 +197,7 @@ export class HoloController {
                     return this.execFileDescribeCommand(COMMAND.DESCRIBE, NON_AUDIO_TYPES, message, reply);
                 }
                 case COMMAND.TRANSLATE: {
-                    break;
+                    return;
                 }
             }
         }
