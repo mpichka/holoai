@@ -27,6 +27,8 @@ export class FileDescriberService {
     }
 
     async describe(attachment: LinkedAttachmentModel): Promise<LinkedAttachmentModel | undefined> {
+        if (attachment.ai_description?.trim()) return attachment;
+
         try {
             const { data: tgData, mimeType: tgMimeType } = await this.tg.getFileContent(attachment.rel.file_tg_id);
 
