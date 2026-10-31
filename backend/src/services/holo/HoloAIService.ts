@@ -1,16 +1,20 @@
 import type { Container } from '../../utils/di';
 import { Llama } from '../../utils/llama';
 import {
+    APOLOGIES_RULES,
     DEFYING_COMMANDS_SYSTEM_PROMPT,
     FAIL_TO_DELETE_OLD_REPLY_USER_PROMPT,
     FAIL_TO_DELETE_REPLY_SYSTEM_PROMPT,
     FAIL_TO_DELETE_REPLY_USER_PROMPT,
     FAIL_TO_DELETE_TRANSCRIBE_USER_PROMPT,
+    IDENTITY,
+    IDENTITY_RULES,
     TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
     TASK_TEMPLATE_SYSTEM_PROMPT,
     TRANSCRIBE_MEDIA_FILE_USER_PROMPT,
 } from './prompts';
 import { Command } from './types';
+import { rules } from './utils';
 
 export class HoloAIService {
     llama: Llama;
@@ -57,7 +61,7 @@ export class HoloAIService {
         const res = await this.llama.request([
             {
                 role: 'system',
-                content: FAIL_TO_DELETE_REPLY_SYSTEM_PROMPT,
+                content: IDENTITY + FAIL_TO_DELETE_REPLY_SYSTEM_PROMPT + rules(IDENTITY_RULES, APOLOGIES_RULES),
             },
             {
                 role: 'user',
