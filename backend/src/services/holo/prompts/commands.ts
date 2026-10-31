@@ -25,6 +25,7 @@ Do not judge, answer, summarize, or comment on the message.
 If no categories apply, return an empty list.
 If message contains a request to the AI, classify the request type. If request type cannot be determinate — use the "unacceptable".
 When user ask to translate something, but don't specify language, then he means to use transcribe instead.
+When user ask to explain something "what is it?", then he means to use describe instead.
 If user ask to translate something, specify translation language in the "args" property.
 If user ask to summarize, specify number of entries to summarize in the "args" property.
 
