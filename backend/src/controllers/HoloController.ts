@@ -191,10 +191,10 @@ export class HoloController {
                     break;
                 }
                 case COMMAND.TRANSCRIBE: {
-                    return await this.execTranscribeCommand(message, reply);
+                    return this.execFileDescribeCommand(COMMAND.TRANSCRIBE, AUDIO_TYPES, message, reply);
                 }
                 case COMMAND.DESCRIBE: {
-                    return await this.execDescribeCommand(message, reply);
+                    return this.execFileDescribeCommand(COMMAND.DESCRIBE, NON_AUDIO_TYPES, message, reply);
                 }
                 case COMMAND.TRANSLATE: {
                     break;
@@ -232,14 +232,6 @@ export class HoloController {
                 replyToMessageId: message.messageTgId,
             });
         }
-    }
-
-    execTranscribeCommand(message: FullMessageModel, reply?: FullMessageModel | null) {
-        return this.execFileDescribeCommand(COMMAND.TRANSCRIBE, AUDIO_TYPES, message, reply);
-    }
-
-    execDescribeCommand(message: FullMessageModel, reply?: FullMessageModel | null) {
-        return this.execFileDescribeCommand(COMMAND.DESCRIBE, NON_AUDIO_TYPES, message, reply);
     }
 
     private async execFileDescribeCommand(
