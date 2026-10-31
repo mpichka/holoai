@@ -94,6 +94,7 @@ export class TelegramBot {
                 text,
                 message_thread_id: options.messageThreadId,
                 reply_parameters: options.replyToMessageId ? { message_id: options.replyToMessageId } : undefined,
+                parse_mode: options.parseMode ? options.parseMode : undefined,
             });
 
             this.logger.info(`Sent message ${sent.message_id} in chat ${chatId}`);
@@ -105,12 +106,18 @@ export class TelegramBot {
         }
     }
 
-    async editMessage(text: string, chatId: number, messageId: number): Promise<EditMessageTextResult> {
+    async editMessage(
+        text: string,
+        chatId: number,
+        messageId: number,
+        options: SendOptions = {},
+    ): Promise<EditMessageTextResult> {
         try {
             const edited = await this.bot.api.editMessageText({
                 chat_id: chatId,
                 message_id: messageId,
                 text,
+                parse_mode: options.parseMode ? options.parseMode : undefined,
             });
 
             this.logger.info(`Edited message ${messageId} in chat ${chatId}`);

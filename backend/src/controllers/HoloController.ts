@@ -310,7 +310,7 @@ export class HoloController {
             description = await this.holoAIService.translate(description);
         }
 
-        const res = fillTemplate(template, { username, data: description });
-        await this.tg.editMessage(res, tgMessage.chat.id, tgMessage.message_id);
+        const res = fillTemplate(template, { username, data: `<blockquote>${description}</blockquote>` });
+        await this.tg.editMessage(res, tgMessage.chat.id, tgMessage.message_id, { parseMode: 'HTML' });
     }
 }

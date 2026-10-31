@@ -13,4 +13,5 @@ export interface ChatContext {
 export interface SendOptions {
     replyToMessageId?: number;
     messageThreadId?: number;
+    parseMode?: string;
 }
