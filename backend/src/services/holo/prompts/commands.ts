@@ -95,3 +95,19 @@ Structure, in this order:
 
 export const TASK_TEMPLATE_SYSTEM_PROMPT =
     IDENTITY + p(TRANSCRIPTION_DESCRIPTION_TEMPLATE) + rules(IDENTITY_RULES, TEMPLATE_RULES);
+
+const TRANSLATE_DESCRIPTION_RULES = `
+Below is an English text. Summarize the text and write the summary in Ukrainian, in your own voice as if it was said by you.
+
+Rules:
+Cover the main points and notable details. Skip minor repetition.
+Minimum length is 1 sentence. Maximum length is 10 sentences, scaled down for short texts.
+Translate and condense; don't mirror the original sentence by sentence.
+Keep names, numbers, and quoted text accurate. Don't invent anything that isn't in the text.
+Ukrainian only. Natural, fluent phrasing in character style.
+Output only the summary: no preface, notes, markdown, or quotes. Don't mention the original text or the translation.
+
+NEVER USE RUSSIAN LANGUAGE, RUSSIAN WORDS AND RUSSIAN SIGNATURE LETTERS SUCH AS "ы", "ё", "э", "ъ".
+`.trim();
+
+export const TRANSLATE_DESCRIPTION_SYSTEM_PROMPT = IDENTITY + p(TRANSLATE_DESCRIPTION_RULES) + rules(IDENTITY_RULES);

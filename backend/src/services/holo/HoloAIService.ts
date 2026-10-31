@@ -12,6 +12,7 @@ import {
     TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
     TASK_TEMPLATE_SYSTEM_PROMPT,
     TRANSCRIBE_MEDIA_FILE_USER_PROMPT,
+    TRANSLATE_DESCRIPTION_SYSTEM_PROMPT,
 } from './prompts';
 import { Command } from './types';
 
@@ -140,6 +141,23 @@ export class HoloAIService {
             {
                 role: 'user',
                 content: userPrompt,
+            },
+        ]);
+
+        return Llama.toResponse(res);
+    }
+
+    async translate(text?: string): Promise<string> {
+        if (!text) return '';
+
+        const res = await this.llama.request([
+            {
+                role: 'system',
+                content: TRANSLATE_DESCRIPTION_SYSTEM_PROMPT,
+            },
+            {
+                role: 'user',
+                content: text,
             },
         ]);
 

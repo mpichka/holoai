@@ -284,10 +284,15 @@ export class HoloController {
             return;
         }
 
-        const descriptions: (string | undefined)[] = [];
+        const descriptions: string[] = [];
         for (const file of attachments) {
             const described = await this.fileDescriberService.describe(file);
-            descriptions.push(described?.ai_description);
+            if (described && described.ai_description) descriptions.push(described.ai_description);
+        }
+
+        if (!descriptions.length) {
+            const failRes = await this.holoAIService.taskFail(task);
+            await this.tg.editMessage(failRes, tgMessage.chat.id, tgMessage.message_id);
         }
 
         const template = await this.holoAIService.generateTemplateResponse(task);
@@ -300,7 +305,12 @@ export class HoloController {
             username = userName;
         }
 
-        const res = fillTemplate(template, { username, data: descriptions.join('\n\n') });
+        let description = descriptions.join('\n\n');
+        if (task !== 'transcribe') {
+            description = await this.holoAIService.translate(description);
+        }
+
+        const res = fillTemplate(template, { username, data: description });
         await this.tg.editMessage(res, tgMessage.chat.id, tgMessage.message_id);
     }
 }
