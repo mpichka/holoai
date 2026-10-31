@@ -38,7 +38,7 @@ export class HoloAIService {
         return data ? JSON.parse(data) : [];
     }
 
-    async taskAcknowledge(): Promise<string | null> {
+    async taskAcknowledge(): Promise<string> {
         const res = await this.llama.request([
             {
                 role: 'system',
@@ -53,7 +53,7 @@ export class HoloAIService {
         return Llama.toResponse(res);
     }
 
-    async couldNotDeleteReply(): Promise<string | null> {
+    async couldNotDeleteReply(): Promise<string> {
         const res = await this.llama.request([
             {
                 role: 'system',
@@ -68,7 +68,7 @@ export class HoloAIService {
         return Llama.toResponse(res);
     }
 
-    async couldNotDeleteOldReply(): Promise<string | null> {
+    async couldNotDeleteOldReply(): Promise<string> {
         const res = await this.llama.request([
             {
                 role: 'system',
@@ -83,7 +83,7 @@ export class HoloAIService {
         return Llama.toResponse(res);
     }
 
-    async couldNotTranscribe(): Promise<string | null> {
+    async couldNotTranscribe(): Promise<string> {
         const res = await this.llama.request([
             {
                 role: 'system',
@@ -98,7 +98,7 @@ export class HoloAIService {
         return Llama.toResponse(res);
     }
 
-    async generateTranscribeTemplateResponse(): Promise<string | null> {
+    async generateTranscribeTemplateResponse(): Promise<string> {
         const res = await this.llama.request([
             {
                 role: 'system',

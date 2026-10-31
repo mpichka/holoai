@@ -111,7 +111,7 @@ export class Llama {
     }
 
     static toResponse(data: ChatCompletionResponse) {
-        return data.choices[0].message.content;
+        return data.choices[0].message.content || 'Unexpected error happens. Somebody, tell my author about.';
     }
 }
 

@@ -2,8 +2,7 @@ import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
 import { CHARACTER_NAMES, COMMAND, COMMANDS } from '../constants';
 import type { FileDescriberService } from '../services/describer';
-import type { HoloAIService } from '../services/holo/HoloAIService';
-import type { FullMessageModel, HoloService } from '../services/holo/HoloService';
+import { fillTemplate, type FullMessageModel, type HoloAIService, type HoloService } from '../services/holo';
 import type { TriggerService } from '../services/trigger';
 import { TRIGGER } from '../services/trigger/constants';
 import type { Trigger } from '../services/trigger/types';
@@ -62,15 +61,12 @@ export class HoloController {
             this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
         }, ACTION_RESEND_TIMEOUT);
 
-        let reply;
         try {
-            reply = await this.generateReply(trigger, message, repliedMessage);
+            await this.generateReply(trigger, message, repliedMessage);
         } finally {
             this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
             clearInterval(typing);
         }
-
-        await this.createReply(reply);
     }
 
     logMessage(ctx: ChatContext) {
@@ -183,117 +179,19 @@ export class HoloController {
         if (nameTrigger) return nameTrigger;
     }
 
-    async createReply(reply: any) {
-        // TODO:
-        console.log(`\n\n${JSON.stringify(reply)}\n\n`);
-    }
-
     async generateReply(trigger: Trigger, message: FullMessageModel, reply?: FullMessageModel | null) {
         this.logger.info(`Generating reply for the ${message.id} for reason: ${trigger.reason}`);
 
         if (trigger.command) {
             switch (trigger.command) {
                 case COMMAND.DELETE: {
-                    if (reply && reply.user.tgId === this.tg.botId) {
-                        try {
-                            await this.tg.deleteMessage(reply.chat.tgId, reply.messageTgId);
-
-                            await this.holoService.deleteMessage(reply.id);
-                        } catch (error) {
-                            this.logger.warn(
-                                `Couldn't delete the message due error. chatId:${reply.chat.tgId}, messageId:${reply.messageTgId}.\nError: ${error}`,
-                            );
-
-                            const aiRes = await this.holoAIService.couldNotDeleteOldReply();
-
-                            if (aiRes) {
-                                await this.tg.sendMessage(aiRes, message.chat.tgId, {
-                                    messageThreadId: message.threadTgId,
-                                    replyToMessageId: message.messageTgId,
-                                });
-                            }
-                        }
-
-                        break;
-                    }
-
-                    const aiRes = await this.holoAIService.couldNotDeleteReply();
-
-                    if (aiRes) {
-                        await this.tg.sendMessage(aiRes, message.chat.tgId, {
-                            messageThreadId: message.threadTgId,
-                            replyToMessageId: message.messageTgId,
-                        });
-                    }
-
-                    break;
+                    return await this.execDeleteCommand(message, reply);
                 }
                 case COMMAND.SUMMARIZE: {
                     break;
                 }
                 case COMMAND.TRANSCRIBE: {
-                    let aiRes = await this.holoAIService.taskAcknowledge();
-
-                    let tgMessage;
-                    if (aiRes) {
-                        tgMessage = await this.tg.sendMessage(aiRes, message.chat.tgId, {
-                            messageThreadId: message.threadTgId,
-                            replyToMessageId: message.messageTgId,
-                        });
-                    }
-
-                    if (!tgMessage) {
-                        this.logger.error('Cannot send message to tg');
-                        return;
-                    }
-
-                    if (reply) {
-                        const audioAttachments = reply.attachments.filter((file) => AUDIO_TYPES.includes(file.type));
-
-                        if (!audioAttachments.length) {
-                            const aiRes = await this.holoAIService.couldNotTranscribe();
-
-                            if (aiRes) {
-                                await this.tg.editMessage(aiRes, tgMessage.chat.id, tgMessage?.message_id);
-                            }
-
-                            break;
-                        }
-
-                        const transcriptions = [];
-                        for (const audio of audioAttachments) {
-                            const attachment = await this.fileDescriberService.describe(audio);
-                            transcriptions.push(attachment?.ai_description);
-                        }
-
-                        const aiRes = await this.holoAIService.generateTranscribeTemplateResponse();
-
-                        if (aiRes) {
-                            let username = 'невідомцю';
-                            if (reply.user.firstName?.trim()) {
-                                username = `${reply.user.firstName} ${reply.user.lastName || ''}`.trim();
-                            } else if (reply.user.userName) {
-                                username = reply.user.userName;
-                            }
-
-                            const res = this.fillTemplate(aiRes, {
-                                username,
-                                transcription: transcriptions.join('\n\n'),
-                            });
-
-                            await this.tg.editMessage(res, tgMessage.chat.id, tgMessage?.message_id);
-                        }
-
-                        break;
-                    }
-
-                    aiRes = await this.holoAIService.couldNotTranscribe();
-
-                    if (aiRes) {
-                        await this.tg.editMessage(aiRes, tgMessage.chat.id, tgMessage?.message_id);
-                    }
-
-                    break;
+                    return await this.execTranscribeComand(message, reply);
                 }
                 case COMMAND.TRANSLATE: {
                     break;
@@ -304,8 +202,81 @@ export class HoloController {
         }
     }
 
-    // TODO: move to the utils when I'll more than one template helper
-    private fillTemplate(template: string, values: Record<string, string>): string {
-        return template.replace(/\{(\w+)\}/g, (match, key) => values[key] ?? match);
+    async execDeleteCommand(message: FullMessageModel, reply?: FullMessageModel | null) {
+        if (!reply || reply.user.tgId !== this.tg.botId) {
+            const aiRes = await this.holoAIService.couldNotDeleteReply();
+
+            await this.tg.sendMessage(aiRes, message.chat.tgId, {
+                messageThreadId: message.threadTgId,
+                replyToMessageId: message.messageTgId,
+            });
+
+            return;
+        }
+
+        try {
+            await this.tg.deleteMessage(reply.chat.tgId, reply.messageTgId);
+            await this.holoService.deleteMessage(reply.id);
+        } catch (error) {
+            this.logger.warn(
+                `Couldn't delete the message due error. chatId:${reply.chat.tgId}, messageId:${reply.messageTgId}.\nError: ${error}`,
+            );
+
+            const aiRes = await this.holoAIService.couldNotDeleteOldReply();
+
+            await this.tg.sendMessage(aiRes, message.chat.tgId, {
+                messageThreadId: message.threadTgId,
+                replyToMessageId: message.messageTgId,
+            });
+        }
+    }
+
+    async execTranscribeComand(message: FullMessageModel, reply?: FullMessageModel | null) {
+        const aiRes = await this.holoAIService.taskAcknowledge();
+
+        const tgMessage = await this.tg.sendMessage(aiRes, message.chat.tgId, {
+            messageThreadId: message.threadTgId,
+            replyToMessageId: message.messageTgId,
+        });
+
+        if (!reply) {
+            const aiFailRes = await this.holoAIService.couldNotTranscribe();
+
+            await this.tg.editMessage(aiFailRes, tgMessage.chat.id, tgMessage?.message_id);
+
+            return;
+        }
+
+        const audioAttachments = reply.attachments.filter((file) => AUDIO_TYPES.includes(file.type));
+
+        if (!audioAttachments.length) {
+            const aiRes = await this.holoAIService.couldNotTranscribe();
+
+            await this.tg.editMessage(aiRes, tgMessage.chat.id, tgMessage?.message_id);
+
+            return;
+        }
+
+        const transcriptions = [];
+        for (const audio of audioAttachments) {
+            const attachment = await this.fileDescriberService.describe(audio);
+            transcriptions.push(attachment?.ai_description);
+        }
+
+        const aiTemplateRes = await this.holoAIService.generateTranscribeTemplateResponse();
+
+        let username = 'невідомцю';
+        if (reply.user.firstName?.trim()) {
+            username = `${reply.user.firstName} ${reply.user.lastName || ''}`.trim();
+        } else if (reply.user.userName) {
+            username = reply.user.userName;
+        }
+
+        const res = fillTemplate(aiTemplateRes, {
+            username,
+            transcription: transcriptions.join('\n\n'),
+        });
+
+        await this.tg.editMessage(res, tgMessage.chat.id, tgMessage?.message_id);
     }
 }

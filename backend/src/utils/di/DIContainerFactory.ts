@@ -1,8 +1,7 @@
 import * as awilix from 'awilix';
 import { HoloController } from '../../controllers/HoloController';
 import { FileDescriberService } from '../../services/describer';
-import { HoloAIService } from '../../services/holo/HoloAIService';
-import { HoloService } from '../../services/holo/HoloService';
+import { HoloAIService, HoloService } from '../../services/holo';
 import { TriggerService } from '../../services/trigger';
 import { Database } from '../db';
 import { Llama } from '../llama';
