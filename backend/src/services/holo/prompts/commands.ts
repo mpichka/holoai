@@ -35,7 +35,7 @@ Property "type" always must be alongside the "category": "request".
 Property "args" always must be alongside the category "type": "summarize".
 `.trim();
 
-export const FAIL_TO_DELETE_REPLY_SYSTEM_PROMPT =
+export const FAILED_TASK_SYSTEM_PROMPT =
     IDENTITY +
     p("When the user tells you that you failed a task, apologize in Holo's voice.") +
     rules(IDENTITY_RULES, APOLOGIES_RULES);
@@ -50,9 +50,14 @@ Request: Delete the previous reply in the chat.
 Failure reason: The reply is too old. You can only delete your own replies within 48 hours (2 days) of sending them. You cannot fulfill user request.
 `.trim();
 
-export const FAIL_TO_DELETE_TRANSCRIBE_USER_PROMPT = `
+export const FAIL_TO_TRANSCRIBE_USER_PROMPT = `
 Request: Transcribe the audio of video file attached to the reply message.
 Failure reason: The reply message does not contain an audio or video file to transcribe.
+`.trim();
+
+export const FAIL_TO_DESCRIBE_USER_PROMPT = `
+Request: Describe the image of video file attached to the reply message.
+Failure reason: The reply message does not contain an image or video file to describe.
 `.trim();
 
 export const TASK_ACKNOWLEDGED_SYSTEM_PROMPT =
@@ -66,17 +71,22 @@ export const TRANSCRIBE_MEDIA_FILE_USER_PROMPT = `
 Request: Transcribe the audio of video file attached to the reply message.
 `.trim();
 
-const TRANSCRIPTION_TEMPLATE = `
+export const DESCRIBE_MEDIA_FILE_USER_PROMPT = `
+Request: Describe the image of video file attached to the reply message.
+`.trim();
+
+const TRANSCRIPTION_DESCRIPTION_TEMPLATE = `
 You are writing a message template. The application will substitute the placeholders afterwards, so output them literally and never fill them in yourself.
 
 Placeholders:
 {username}: the user's name
-{transcription}: the transcription result
+{data}: the action results
 
 Structure, in this order:
 1. A short intro line in Holo's voice that mentions {username} and says the following was heard.
-2. A blank line, then {transcription} alone on its own line.
+2. A blank line, then {data} alone on its own line.
 3. A blank line, then a short closing line in Holo's voice hoping she made no mistakes.
 `.trim();
 
-export const TASK_TEMPLATE_SYSTEM_PROMPT = IDENTITY + p(TRANSCRIPTION_TEMPLATE) + rules(IDENTITY_RULES, TEMPLATE_RULES);
+export const TASK_TEMPLATE_SYSTEM_PROMPT =
+    IDENTITY + p(TRANSCRIPTION_DESCRIPTION_TEMPLATE) + rules(IDENTITY_RULES, TEMPLATE_RULES);

@@ -1,12 +1,12 @@
 import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
-import { CHARACTER_NAMES, COMMAND, COMMANDS } from '../constants';
+import { CHARACTER_NAMES, COMMAND, COMMANDS, CommandTypes } from '../constants';
 import type { FileDescriberService } from '../services/describer';
 import { fillTemplate, type FullMessageModel, type HoloAIService, type HoloService } from '../services/holo';
 import type { TriggerService } from '../services/trigger';
 import { TRIGGER } from '../services/trigger/constants';
 import type { Trigger } from '../services/trigger/types';
-import { AUDIO_TYPES } from '../utils/db/repositories';
+import { AUDIO_TYPES, NON_AUDIO_TYPES } from '../utils/db/repositories';
 import type { Container } from '../utils/di';
 import { CHAT_ACTION, type ChatContext, type TelegramBot } from '../utils/tg';
 
@@ -191,7 +191,10 @@ export class HoloController {
                     break;
                 }
                 case COMMAND.TRANSCRIBE: {
-                    return await this.execTranscribeComand(message, reply);
+                    return await this.execTranscribeCommand(message, reply);
+                }
+                case COMMAND.DESCRIBE: {
+                    return await this.execDescribeCommand(message, reply);
                 }
                 case COMMAND.TRANSLATE: {
                     break;
@@ -204,7 +207,7 @@ export class HoloController {
 
     async execDeleteCommand(message: FullMessageModel, reply?: FullMessageModel | null) {
         if (!reply || reply.user.tgId !== this.tg.botId) {
-            const aiRes = await this.holoAIService.couldNotDeleteReply();
+            const aiRes = await this.holoAIService.failToDeleteReply();
 
             await this.tg.sendMessage(aiRes, message.chat.tgId, {
                 messageThreadId: message.threadTgId,
@@ -222,7 +225,7 @@ export class HoloController {
                 `Couldn't delete the message due error. chatId:${reply.chat.tgId}, messageId:${reply.messageTgId}.\nError: ${error}`,
             );
 
-            const aiRes = await this.holoAIService.couldNotDeleteOldReply();
+            const aiRes = await this.holoAIService.failToDeleteReply(true);
 
             await this.tg.sendMessage(aiRes, message.chat.tgId, {
                 messageThreadId: message.threadTgId,
@@ -231,52 +234,52 @@ export class HoloController {
         }
     }
 
-    async execTranscribeComand(message: FullMessageModel, reply?: FullMessageModel | null) {
-        const aiRes = await this.holoAIService.taskAcknowledge();
+    execTranscribeCommand(message: FullMessageModel, reply?: FullMessageModel | null) {
+        return this.execFileDescribeCommand(COMMAND.TRANSCRIBE, AUDIO_TYPES, message, reply);
+    }
 
-        const tgMessage = await this.tg.sendMessage(aiRes, message.chat.tgId, {
+    execDescribeCommand(message: FullMessageModel, reply?: FullMessageModel | null) {
+        return this.execFileDescribeCommand(COMMAND.DESCRIBE, NON_AUDIO_TYPES, message, reply);
+    }
+
+    private async execFileDescribeCommand(
+        task: CommandTypes,
+        types: number[],
+        message: FullMessageModel,
+        reply?: FullMessageModel | null,
+    ) {
+        const ack = await this.holoAIService.taskAcknowledge(task);
+
+        const tgMessage = await this.tg.sendMessage(ack, message.chat.tgId, {
             messageThreadId: message.threadTgId,
             replyToMessageId: message.messageTgId,
         });
 
-        if (!reply) {
-            const aiFailRes = await this.holoAIService.couldNotTranscribe();
+        const attachments = reply?.attachments.filter((file) => types.includes(file.type));
 
-            await this.tg.editMessage(aiFailRes, tgMessage.chat.id, tgMessage?.message_id);
-
+        if (!reply || !attachments?.length) {
+            const failRes = await this.holoAIService.taskFail(task);
+            await this.tg.editMessage(failRes, tgMessage.chat.id, tgMessage.message_id);
             return;
         }
 
-        const audioAttachments = reply.attachments.filter((file) => AUDIO_TYPES.includes(file.type));
-
-        if (!audioAttachments.length) {
-            const aiRes = await this.holoAIService.couldNotTranscribe();
-
-            await this.tg.editMessage(aiRes, tgMessage.chat.id, tgMessage?.message_id);
-
-            return;
+        const descriptions: (string | undefined)[] = [];
+        for (const file of attachments) {
+            const described = await this.fileDescriberService.describe(file);
+            descriptions.push(described?.ai_description);
         }
 
-        const transcriptions = [];
-        for (const audio of audioAttachments) {
-            const attachment = await this.fileDescriberService.describe(audio);
-            transcriptions.push(attachment?.ai_description);
-        }
+        const template = await this.holoAIService.generateTemplateResponse(task);
 
-        const aiTemplateRes = await this.holoAIService.generateTranscribeTemplateResponse();
-
+        const { firstName, lastName, userName } = reply.user;
         let username = 'невідомцю';
-        if (reply.user.firstName?.trim()) {
-            username = `${reply.user.firstName} ${reply.user.lastName || ''}`.trim();
-        } else if (reply.user.userName) {
-            username = reply.user.userName;
+        if (firstName?.trim()) {
+            username = `${firstName} ${lastName || ''}`.trim();
+        } else if (userName) {
+            username = userName;
         }
 
-        const res = fillTemplate(aiTemplateRes, {
-            username,
-            transcription: transcriptions.join('\n\n'),
-        });
-
-        await this.tg.editMessage(res, tgMessage.chat.id, tgMessage?.message_id);
+        const res = fillTemplate(template, { username, data: descriptions.join('\n\n') });
+        await this.tg.editMessage(res, tgMessage.chat.id, tgMessage.message_id);
     }
 }
