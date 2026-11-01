@@ -160,6 +160,23 @@ export class TelegramBot {
         }
     }
 
+    async react(chatId: number, messageId: number, emoji: string = '❤'): Promise<boolean> {
+        try {
+            const res = await this.bot.api.setMessageReaction({
+                chat_id: chatId,
+                message_id: messageId,
+                reaction: [{ type: 'emoji', emoji }],
+            });
+
+            this.logger.info(`Reacted with "${emoji}" to message ${messageId} in chat ${chatId}`);
+
+            return res;
+        } catch (err) {
+            this.logger.error(`Failed to react to message ${messageId} in chat ${chatId}: ${err}`);
+            throw err;
+        }
+    }
+
     async getFileContent(telegramFileId: string): Promise<{ data: Buffer; mimeType: string | null }> {
         try {
             const file = await this.bot.api.getFile({

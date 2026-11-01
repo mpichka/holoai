@@ -18,6 +18,12 @@ export const telegramDeleteBody = z.object({
     messageId: z.number(),
 });
 
+export const telegramReactBody = z.object({
+    chatId: z.number(),
+    messageId: z.number(),
+});
+
 export type TelegramSendBody = z.infer<typeof telegramSendBody>;
 export type TelegramEditBody = z.infer<typeof telegramEditBody>;
 export type TelegramDeleteBody = z.infer<typeof telegramDeleteBody>;
+export type TelegramReactBody = z.infer<typeof telegramReactBody>;

@@ -4,6 +4,8 @@ import {
     telegramDeleteBody,
     type TelegramEditBody,
     telegramEditBody,
+    telegramReactBody,
+    TelegramReactBody,
     type TelegramSendBody,
     telegramSendBody,
 } from '../schemas';
@@ -20,6 +22,12 @@ export class TelegramRoutes implements Routes {
             method: 'post',
             schema: { body: telegramSendBody },
             handler: this.create,
+        },
+        {
+            path: 'react',
+            method: 'post',
+            schema: { body: telegramReactBody },
+            handler: this.react,
         },
         {
             path: '',
@@ -48,6 +56,14 @@ export class TelegramRoutes implements Routes {
             messageThreadId: threadId,
             replyToMessageId,
         });
+
+        return sent;
+    }
+
+    async react({ body }: Data<null, null, TelegramReactBody>) {
+        const { chatId, messageId } = body;
+
+        const sent = await this.tg.react(chatId, messageId);
 
         return sent;
     }
