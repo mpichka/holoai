@@ -1,4 +1,5 @@
 import express, { type Express, type NextFunction, type Request, type Response } from 'express';
+import { TelegramRoutes } from '../../routes';
 import type { Container } from '../di';
 import { corsMiddleware, errorHandlerMiddleware, notFoundMiddleware, requestLoggerMiddleware } from '../middlewares';
 import type { Data, Route, RouteMethod, Routes } from './types';
@@ -17,9 +18,7 @@ export class Router {
 
         app.use(requestLoggerMiddleware(this.logger));
 
-        this.injectRoutes(app, [
-            // TODO: add routes gere
-        ]);
+        this.injectRoutes(app, [TelegramRoutes]);
 
         app.use(notFoundMiddleware);
         app.use(errorHandlerMiddleware(this.logger));
