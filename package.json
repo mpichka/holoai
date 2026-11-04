@@ -14,7 +14,8 @@
         "m:new": "pnpm --filter @holoai/backend m:new",
         "m:up": "pnpm --filter @holoai/backend m:up",
         "m:down": "pnpm --filter @holoai/backend m:down",
-        "m:status": "pnpm --filter @holoai/backend m:status"
+        "m:status": "pnpm --filter @holoai/backend m:status",
+        "scripts:upload-chat-archive": "pnpm --filter @holoai/backend build && node backend/dist/scripts/uploadChatArchive.js"
     },
     "engines": {
         "node": ">=24.14.0 <25.0.0",

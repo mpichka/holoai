@@ -18,8 +18,10 @@ export type NewUserRecord = Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>
 export class UserRepository {
     constructor(private readonly knex: Knex) {}
 
-    async upsert(payload: NewUserRecord): Promise<UserRecord> {
-        const res = await this.knex('users')
+    async upsert(payload: NewUserRecord, trx?: Knex.Transaction): Promise<UserRecord> {
+        const conn = trx ?? this.knex;
+
+        const res = await conn('users')
             .insert(payload)
             .onConflict('tg_id')
             .merge(['is_bot', 'first_name', 'last_name', 'username', 'language_code'])

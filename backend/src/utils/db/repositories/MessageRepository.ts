@@ -30,8 +30,10 @@ const MESSAGE_SELECT_ALIASES = [
 export class MessageRepository {
     constructor(private readonly knex: Knex) {}
 
-    async upsert(payload: NewMessageRecord): Promise<MessageRecord> {
-        const res = await this.knex('messages')
+    async upsert(payload: NewMessageRecord, trx?: Knex.Transaction): Promise<MessageRecord> {
+        const conn = trx ?? this.knex;
+
+        const res = await conn('messages')
             .insert(payload)
             .onConflict(['chat_id', 'message_tg_id'])
             .merge(['thread_tg_id', 'reply_to_id', 'sent_at', 'text'])

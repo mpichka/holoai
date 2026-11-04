@@ -3,13 +3,13 @@
     "version": "0.0.0",
     "private": true,
     "type": "commonjs",
-    "main": "dist/main.js",
+    "main": "dist/src/main.js",
     "engines": {
         "node": ">=24.14.0 <25.0.0"
     },
     "scripts": {
         "build": "tsc",
-        "start": "tsc && node dist/main.js",
+        "start": "tsc && node dist/src/main.js",
         "m:new": "knex migrate:make -x js --knexfile knexfile.js",
         "m:up": "knex migrate:latest --knexfile knexfile.js",
         "m:down": "knex migrate:rollback --knexfile knexfile.js",

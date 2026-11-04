@@ -1,13 +1,13 @@
 {
     "extends": ["../tsconfig.base.json", "@tsconfig/node24/tsconfig.json"],
-    "include": ["src"],
+    "include": ["src", "scripts"],
     "compilerOptions": {
         "target": "ES2022",
         "module": "Node16",
         "moduleResolution": "node16",
         "lib": ["ES2022"],
         "types": ["node"],
-        "rootDir": "src",
+        "rootDir": ".",
         "outDir": "dist",
         "noEmit": false,
         "sourceMap": true,
