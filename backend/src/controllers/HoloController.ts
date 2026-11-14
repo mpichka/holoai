@@ -215,6 +215,8 @@ export class HoloController {
 
         const commands = await this.holoAIService.defineCommand(message.text);
 
+        console.log(commands);
+
         const overrideAttempt = commands.find((command) => command.category === 'overriding_instructions');
 
         if (overrideAttempt) {
@@ -228,15 +230,19 @@ export class HoloController {
 
         for (const command of commands) {
             switch (command.category) {
-                case 'greeting': {
-                    // TODO: casual greeting
-                    break;
-                }
                 case 'delete': {
                     return this.execDeleteCommand(message, reply);
                 }
                 case 'request': {
                     switch (command.type) {
+                        case 'unacceptable': {
+                            const res = await this.holoAIService.rejectUnacceptable(message.text);
+
+                            return await this.tg.sendMessage(res, message.chat.tgId, {
+                                messageThreadId: message.threadTgId,
+                                replyToMessageId: message.messageTgId,
+                            });
+                        }
                         case COMMAND.SUMMARIZE: {
                             // TODO: placeholder
                             const messages = await this.holoService.getFullMessages(message.chat.tgId, 10000, 0);

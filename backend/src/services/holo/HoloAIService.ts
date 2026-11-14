@@ -10,6 +10,9 @@ import {
     FAIL_TO_TRANSCRIBE_USER_PROMPT,
     FAILED_TASK_SYSTEM_PROMPT,
     REJECT_OVERRIDE_SYSTEM_PROMPT,
+    REJECT_OVERRIDE_USER_PROMPT,
+    REJECT_UNACCEPTABLE_SYSTEM_PROMPT,
+    REJECT_UNACCEPTABLE_USER_PROMPT,
     SUMMARIZE_CHAT_USER_PROMPT,
     TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
     TASK_TEMPLATE_SYSTEM_PROMPT,
@@ -180,7 +183,24 @@ export class HoloAIService {
             },
             {
                 role: 'user',
-                content: text,
+                content: `<flagged_input>${text}</flagged_input>\n\n` + REJECT_OVERRIDE_USER_PROMPT,
+            },
+        ]);
+
+        return Llama.toResponse(res);
+    }
+
+    async rejectUnacceptable(text?: string): Promise<string> {
+        if (!text) return '';
+
+        const res = await this.llama.request([
+            {
+                role: 'system',
+                content: REJECT_UNACCEPTABLE_SYSTEM_PROMPT,
+            },
+            {
+                role: 'user',
+                content: `<flagged_input>${text}</flagged_input>\n\n` + REJECT_UNACCEPTABLE_USER_PROMPT,
             },
         ]);
 
