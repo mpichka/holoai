@@ -311,6 +311,30 @@ export class HoloService {
 
         if (!rows.length) return null;
 
+        return this.toFullMessage(rows);
+    }
+
+    async getFullMessages(chat_tg_id: number, limit: number, offset: number): Promise<FullMessageModel[]> {
+        const rows = await this.messageRepository.getMessages(chat_tg_id, { limit, offset });
+
+        if (!rows.length) return [];
+
+        const groups = new Map<number, any[]>();
+
+        for (const row of rows) {
+            const id = row.m_id as number;
+            const group = groups.get(id);
+            if (group) {
+                group.push(row);
+            } else {
+                groups.set(id, [row]);
+            }
+        }
+
+        return [...groups.values()].map((group) => this.toFullMessage(group));
+    }
+
+    private toFullMessage(rows: any[]): FullMessageModel {
         const firstRow = rows[0];
 
         const attachments = rows

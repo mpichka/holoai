@@ -13,6 +13,10 @@ export const ATTACHMENT_TYPE = Object.freeze({
     VIDEO_NOTE: 41,
 });
 
+export const ATTACHMENT_TYPE_NAMES: Record<number, string> = Object.fromEntries(
+    Object.entries(ATTACHMENT_TYPE).map(([name, value]) => [value, name.toLowerCase()] as [number, string]),
+);
+
 export const AUDIO_TYPES: number[] = [ATTACHMENT_TYPE.AUDIO, ATTACHMENT_TYPE.VOICE];
 export const IMAGE_TYPES: number[] = [ATTACHMENT_TYPE.PHOTO, ATTACHMENT_TYPE.LIVE_PHOTO, ATTACHMENT_TYPE.ANIMATION];
 export const VIDEO_TYPES: number[] = [ATTACHMENT_TYPE.VIDEO, ATTACHMENT_TYPE.VIDEO_NOTE];

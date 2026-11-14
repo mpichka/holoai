@@ -6,11 +6,18 @@ import { fillTemplate, type FullMessageModel, type HoloAIService, type HoloServi
 import type { TriggerService } from '../services/trigger';
 import { TRIGGER } from '../services/trigger/constants';
 import type { Trigger } from '../services/trigger/types';
-import { AUDIO_TYPES, NON_AUDIO_TYPES } from '../utils/db/repositories';
+import { ATTACHMENT_TYPE_NAMES, AUDIO_TYPES, NON_AUDIO_TYPES, VIDEO_TYPES } from '../utils/db/repositories';
 import type { Container } from '../utils/di';
 import { CHAT_ACTION, type ChatContext, type TelegramBot } from '../utils/tg';
 
 const ACTION_RESEND_TIMEOUT = 4500; // 4,5s
+
+export interface ChatSummaryMetadata {
+    messagesCount: number;
+    attachmentsCount: Record<string, number>;
+    audioDuration: string;
+    videoDuration: string;
+}
 
 export class HoloController {
     holoService: HoloService;
@@ -182,13 +189,17 @@ export class HoloController {
     async generateReply(trigger: Trigger, message: FullMessageModel, reply?: FullMessageModel | null) {
         this.logger.info(`Generating reply for the ${message.id} for reason: ${trigger.reason}`);
 
+        console.log(trigger);
+
         if (trigger.command) {
             switch (trigger.command) {
                 case COMMAND.DELETE: {
                     return await this.execDeleteCommand(message, reply);
                 }
                 case COMMAND.SUMMARIZE: {
-                    return;
+                    const messages = await this.holoService.getFullMessages(message.chat.tgId, 10000, 0);
+                    const metadata = this.calculateChatSummaryMetadata(messages);
+                    return this.execChatSummaryCommand(COMMAND.SUMMARIZE, message, metadata);
                 }
                 case COMMAND.TRANSCRIBE: {
                     return this.execFileDescribeCommand(COMMAND.TRANSCRIBE, AUDIO_TYPES, message, reply);
@@ -204,11 +215,15 @@ export class HoloController {
 
         const commands = await this.holoAIService.defineCommand(message.text);
 
-        const ovverideAttempt = commands.find((command) => command.category === 'overriding_instructions');
+        const overrideAttempt = commands.find((command) => command.category === 'overriding_instructions');
 
-        if (ovverideAttempt) {
-            // TODO: prevent ovveriding chatacter's identity
-            return;
+        if (overrideAttempt) {
+            const res = await this.holoAIService.rejectOverrideAttempt(message.text);
+
+            return await this.tg.sendMessage(res, message.chat.tgId, {
+                messageThreadId: message.threadTgId,
+                replyToMessageId: message.messageTgId,
+            });
         }
 
         for (const command of commands) {
@@ -222,6 +237,12 @@ export class HoloController {
                 }
                 case 'request': {
                     switch (command.type) {
+                        case COMMAND.SUMMARIZE: {
+                            // TODO: placeholder
+                            const messages = await this.holoService.getFullMessages(message.chat.tgId, 10000, 0);
+                            const metadata = this.calculateChatSummaryMetadata(messages);
+                            return this.execChatSummaryCommand(COMMAND.SUMMARIZE, message, metadata);
+                        }
                         case COMMAND.TRANSCRIBE: {
                             return this.execFileDescribeCommand(COMMAND.TRANSCRIBE, AUDIO_TYPES, message, reply);
                         }
@@ -312,5 +333,54 @@ export class HoloController {
 
         const res = fillTemplate(template, { username, data: `<blockquote>${description}</blockquote>` });
         await this.tg.editMessage(res, tgMessage.chat.id, tgMessage.message_id, { parseMode: 'HTML' });
+    }
+
+    private calculateChatSummaryMetadata(messages: FullMessageModel[]): ChatSummaryMetadata {
+        const attachments = messages.flatMap((message) => message.attachments);
+
+        const attachmentsCount: Record<string, number> = {};
+
+        for (const attachment of attachments) {
+            const typeName = ATTACHMENT_TYPE_NAMES[attachment.type];
+            attachmentsCount[typeName] = (attachmentsCount[typeName] ?? 0) + 1;
+        }
+
+        const audioSeconds = attachments
+            .filter((attachment) => AUDIO_TYPES.includes(attachment.type))
+            .reduce((sum, attachment) => sum + (attachment.duration ?? 0), 0);
+
+        const videoSeconds = attachments
+            .filter((attachment) => VIDEO_TYPES.includes(attachment.type))
+            .reduce((sum, attachment) => sum + (attachment.duration ?? 0), 0);
+
+        return {
+            messagesCount: messages.length,
+            attachmentsCount,
+            audioDuration: this.formatDuration(audioSeconds),
+            videoDuration: this.formatDuration(videoSeconds),
+        };
+    }
+
+    private formatDuration(seconds: number): string {
+        const totalMinutes = Math.ceil(seconds / 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        return `${minutes}m`;
+    }
+
+    private async execChatSummaryCommand(task: CommandTypes, message: FullMessageModel, metadata: ChatSummaryMetadata) {
+        this.logger.info(`Summarize command for chat ${message.chat.tgId}`, metadata);
+
+        const ack = await this.holoAIService.taskAcknowledge(task);
+
+        const tgMessage = await this.tg.sendMessage(ack, message.chat.tgId, {
+            messageThreadId: message.threadTgId,
+            replyToMessageId: message.messageTgId,
+        });
+
+        const res = await this.holoAIService.generateSummarizeResponse(JSON.stringify(metadata));
+        await this.tg.editMessage(res, tgMessage.chat.id, tgMessage.message_id);
     }
 }

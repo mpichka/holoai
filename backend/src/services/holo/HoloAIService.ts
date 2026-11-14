@@ -9,6 +9,8 @@ import {
     FAIL_TO_DESCRIBE_USER_PROMPT,
     FAIL_TO_TRANSCRIBE_USER_PROMPT,
     FAILED_TASK_SYSTEM_PROMPT,
+    REJECT_OVERRIDE_SYSTEM_PROMPT,
+    SUMMARIZE_CHAT_USER_PROMPT,
     TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
     TASK_TEMPLATE_SYSTEM_PROMPT,
     TRANSCRIBE_MEDIA_FILE_USER_PROMPT,
@@ -52,6 +54,10 @@ export class HoloAIService {
             }
             case COMMAND.DESCRIBE: {
                 userPrompt = DESCRIBE_MEDIA_FILE_USER_PROMPT;
+                break;
+            }
+            case COMMAND.SUMMARIZE: {
+                userPrompt = SUMMARIZE_CHAT_USER_PROMPT;
                 break;
             }
         }
@@ -158,6 +164,40 @@ export class HoloAIService {
             {
                 role: 'user',
                 content: text,
+            },
+        ]);
+
+        return Llama.toResponse(res);
+    }
+
+    async rejectOverrideAttempt(text?: string): Promise<string> {
+        if (!text) return '';
+
+        const res = await this.llama.request([
+            {
+                role: 'system',
+                content: REJECT_OVERRIDE_SYSTEM_PROMPT,
+            },
+            {
+                role: 'user',
+                content: text,
+            },
+        ]);
+
+        return Llama.toResponse(res);
+    }
+
+    async generateSummarizeResponse(metadata: string): Promise<string> {
+        if (!metadata) return '';
+
+        const res = await this.llama.request([
+            {
+                role: 'system',
+                content: TRANSLATE_DESCRIPTION_SYSTEM_PROMPT,
+            },
+            {
+                role: 'user',
+                content: `Reject the request.`,
             },
         ]);
 
