@@ -11,13 +11,16 @@ import {
 
 export class VideoDescriber {
     MAX_DURATION_IN_SECONDS = 60;
+    MAX_FILE_SIZE_IN_BYTES = 10_000_000; // 10 MB
 
     constructor(private readonly llama: Llama) {}
 
-    async describe(data: string, mimeType?: string, duration?: number): Promise<string | null> {
+    async describe(data: string, mimeType?: string, duration?: number, size?: number): Promise<string | null> {
         let file: string | null = data;
 
         if (!duration || duration > this.MAX_DURATION_IN_SECONDS) {
+            file = await trimToFirstSeconds(data, mimeType || 'application/octet-stream', this.MAX_DURATION_IN_SECONDS);
+        } else if (!size || size > this.MAX_FILE_SIZE_IN_BYTES) {
             file = await trimToFirstSeconds(data, mimeType || 'application/octet-stream', this.MAX_DURATION_IN_SECONDS);
         }
 

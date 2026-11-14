@@ -48,7 +48,12 @@ export class FileDescriberService {
                     break;
                 }
                 case 'video': {
-                    description = await this.videoDescriber.describe(data, mimeType, attachment.duration);
+                    description = await this.videoDescriber.describe(
+                        data,
+                        mimeType,
+                        attachment.duration,
+                        attachment.file_size,
+                    );
                     break;
                 }
                 default: {
