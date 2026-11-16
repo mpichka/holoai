@@ -363,7 +363,7 @@ export class HoloController {
         }
 
         if (!messages.length) {
-            const res = await this.holoAIService.generateSummarizeFallback();
+            const res = await this.holoAIService.taskFail(COMMAND.SUMMARIZE);
             await this.tg.editMessage(res, chatId, tgMessage.message_id);
             return;
         }
@@ -406,7 +406,7 @@ export class HoloController {
         }
 
         if (!transcripts.length) {
-            const res = await this.holoAIService.generateSummarizeFallback();
+            const res = await this.holoAIService.taskFail(COMMAND.SUMMARIZE);
             await this.tg.editMessage(res, chatId, tgMessage.message_id);
             return;
         }
@@ -418,7 +418,7 @@ export class HoloController {
         const summary = await this.holoAIService.summarizeTranscripts(transcripts);
 
         if (!summary) {
-            const res = await this.holoAIService.generateSummarizeFallback();
+            const res = await this.holoAIService.taskFail(COMMAND.SUMMARIZE);
             await this.tg.editMessage(res, chatId, tgMessage.message_id);
             return;
         }

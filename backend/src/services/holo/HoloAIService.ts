@@ -77,16 +77,19 @@ export class HoloAIService {
             }
         }
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: userPrompt,
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: userPrompt,
+                },
+            ],
+            'low',
+        );
 
         return Llama.toResponse(res);
     }
@@ -103,18 +106,25 @@ export class HoloAIService {
                 userPrompt = FAIL_TO_DESCRIBE_USER_PROMPT;
                 break;
             }
+            case COMMAND.SUMMARIZE: {
+                userPrompt = SUMMARIZE_FAIL_USER_PROMPT;
+                break;
+            }
         }
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: FAILED_TASK_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: userPrompt,
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: FAILED_TASK_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: userPrompt,
+                },
+            ],
+            'low',
+        );
 
         return Llama.toResponse(res);
     }
@@ -122,16 +132,19 @@ export class HoloAIService {
     async failToDeleteReply(old = false): Promise<string> {
         const userPrompt = old ? FAIL_TO_DELETE_OLD_REPLY_USER_PROMPT : FAIL_TO_DELETE_REPLY_USER_PROMPT;
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: FAILED_TASK_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: userPrompt,
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: FAILED_TASK_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: userPrompt,
+                },
+            ],
+            'low',
+        );
 
         return Llama.toResponse(res);
     }
@@ -158,16 +171,19 @@ export class HoloAIService {
         }
         userPrompt += 'Refer to user in gender neutral tone.';
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: TASK_TEMPLATE_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: userPrompt,
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: TASK_TEMPLATE_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: userPrompt,
+                },
+            ],
+            'low',
+        );
 
         return Llama.toResponse(res);
     }
@@ -192,16 +208,19 @@ export class HoloAIService {
     async rejectOverrideAttempt(text?: string): Promise<string> {
         if (!text) return '';
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: REJECT_OVERRIDE_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: `<flagged_input>${text}</flagged_input>\n\n` + REJECT_OVERRIDE_USER_PROMPT,
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: REJECT_OVERRIDE_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: `<flagged_input>${text}</flagged_input>\n\n` + REJECT_OVERRIDE_USER_PROMPT,
+                },
+            ],
+            'medium',
+        );
 
         return Llama.toResponse(res);
     }
@@ -209,16 +228,19 @@ export class HoloAIService {
     async rejectUnacceptable(text?: string): Promise<string> {
         if (!text) return '';
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: REJECT_UNACCEPTABLE_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: `<flagged_input>${text}</flagged_input>\n\n` + REJECT_UNACCEPTABLE_USER_PROMPT,
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: REJECT_UNACCEPTABLE_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: `<flagged_input>${text}</flagged_input>\n\n` + REJECT_UNACCEPTABLE_USER_PROMPT,
+                },
+            ],
+            'medium',
+        );
 
         return Llama.toResponse(res);
     }
@@ -232,19 +254,22 @@ export class HoloAIService {
         const now = new Date();
 
         try {
-            const res = await this.llama.request([
-                {
-                    role: 'system',
-                    content: MESSAGE_SUMMARIZER_SCOPE_IDENTITY,
-                },
-                {
-                    role: 'user',
-                    content:
-                        `CURRENT DATE AND TIME (UTC): ${now.toISOString()}\n` +
-                        `CURRENT DATE AND TIME (LOCAL): ${DateTime.fromJSDate(now).toFormat('yyyy-MM-dd HH:mm:ss')}\n` +
-                        `USER'S SCOPE REQUEST: ${req}`,
-                },
-            ]);
+            const res = await this.llama.request(
+                [
+                    {
+                        role: 'system',
+                        content: MESSAGE_SUMMARIZER_SCOPE_IDENTITY,
+                    },
+                    {
+                        role: 'user',
+                        content:
+                            `CURRENT DATE AND TIME (UTC): ${now.toISOString()}\n` +
+                            `CURRENT DATE AND TIME (LOCAL): ${DateTime.fromJSDate(now).toFormat('yyyy-MM-dd HH:mm:ss')}\n` +
+                            `USER'S SCOPE REQUEST: ${req}`,
+                    },
+                ],
+                'low',
+            );
 
             const data = JSON.parse(Llama.toResponse(res));
 
@@ -286,30 +311,19 @@ export class HoloAIService {
 
         if (!chunk.length) return;
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: MESSAGE_SUMMARIZER_IDENTITY,
-            },
-            {
-                role: 'user',
-                content: chunk,
-            },
-        ]);
-
-        return Llama.toResponse(res);
-    }
-    async generateSummarizeFallback(): Promise<string> {
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: FAILED_TASK_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: SUMMARIZE_FAIL_USER_PROMPT,
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: MESSAGE_SUMMARIZER_IDENTITY,
+                },
+                {
+                    role: 'user',
+                    content: chunk,
+                },
+            ],
+            'off',
+        );
 
         return Llama.toResponse(res);
     }
@@ -327,31 +341,37 @@ export class HoloAIService {
 
         const estimate = formatEstimatedDuration(meta.estimate);
 
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: SUMMARIZE_PROGRESS_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: SUMMARIZE_CHAT_USER_PROMPT + p(stats) + p(`Approximate estimate: ${estimate}`),
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: SUMMARIZE_PROGRESS_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: SUMMARIZE_CHAT_USER_PROMPT + p(stats) + p(`Approximate estimate: ${estimate}`),
+                },
+            ],
+            'low',
+        );
 
         return Llama.toResponse(res);
     }
 
     async summarizeTranscripts(transcripts: string[]): Promise<string> {
-        const res = await this.llama.request([
-            {
-                role: 'system',
-                content: SUMMARIZE_MESSAGES_SYSTEM_PROMPT,
-            },
-            {
-                role: 'user',
-                content: transcripts.join('\n'),
-            },
-        ]);
+        const res = await this.llama.request(
+            [
+                {
+                    role: 'system',
+                    content: SUMMARIZE_MESSAGES_SYSTEM_PROMPT,
+                },
+                {
+                    role: 'user',
+                    content: transcripts.join('\n'),
+                },
+            ],
+            'hight',
+        );
 
         return Llama.toResponse(res);
     }

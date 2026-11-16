@@ -71,7 +71,7 @@ A full ISO 8601 date-time with a zone (e.g. "2025-03-15T14:00:00Z") is only for 
 
 Rules:
 If the request is a message amount ("500", "the last 20 messages"), use the "count" mode.
-If the request is a time interval, use the "range" mode: relative expressions ("this day", "yesterday", "last week", "since Monday") resolved against the given current date and time, or explicit dates ("September 10", "from September 10 to October 10", "in 2025").
+If the request is a time interval, use the "range" mode: relative expressions ("this day", "yesterday", "last week", 'last 3 days', "since Monday") resolved against the given current date and time, or explicit dates ("September 10", "from September 10 to October 10", "in 2025").
 "This day" or "today" means the current local day. "Since <date>" means from that day up to now.
 A whole month or year ("September 2025", "in 2025") spans from its first day to its last day.
 When a date has no year, assume the current year. If that lands after the current date and time, assume the previous year instead.
