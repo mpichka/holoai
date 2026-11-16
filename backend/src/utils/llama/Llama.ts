@@ -35,6 +35,10 @@ export class Llama {
         this.completionUrl = `${this.baseUrl}/chat/completions`;
     }
 
+    public setUrl(url: string) {
+        this.baseUrl = url || 'http://localhost:8080/v1';
+    }
+
     async health() {
         const url = `${this.baseUrl}/health`;
 

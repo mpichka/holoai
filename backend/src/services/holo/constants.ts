@@ -1,0 +1,2 @@
+export const DEFAULT_MESSAGES_SUMMARIZE_COUNT = 100;
+export const MESSAGES_BATCH_SIZE = 8;

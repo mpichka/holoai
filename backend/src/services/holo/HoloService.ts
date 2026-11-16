@@ -12,6 +12,12 @@ import type {
     Voice,
 } from 'node-telegram-bot-api';
 import {
+    AUDIO_PROCESS_MULTIPLIER,
+    IMAGE_PROCESS_MULTIPLIER,
+    MESSAGE_PROCESS_MULTIPLIER,
+    VIDEO_PROCESS_MULTIPLIER,
+} from '../../constants';
+import {
     ATTACHMENT_COLS,
     ATTACHMENT_TO_MESSAGE_COLS,
     CHAT_COLS,
@@ -24,6 +30,10 @@ import {
 } from '../../utils/db';
 import {
     ATTACHMENT_TYPE,
+    ATTACHMENT_TYPE_NAMES,
+    AUDIO_TYPES,
+    IMAGE_TYPES,
+    VIDEO_TYPES,
     type AttachmentRecord,
     type AttachmentRepository,
     type AttachmentToMessageRecord,
@@ -40,6 +50,7 @@ import {
     type UserRepository,
 } from '../../utils/db/repositories';
 import type { Container } from '../../utils/di';
+import { ChatSummaryMetadata } from './types';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // One day
 
@@ -314,11 +325,23 @@ export class HoloService {
         return this.toFullMessage(rows);
     }
 
-    async getFullMessages(chat_tg_id: number, limit: number, offset: number): Promise<FullMessageModel[]> {
+    async getFullMessages(chat_tg_id: number, limit: number, offset: number = 0): Promise<FullMessageModel[]> {
         const rows = await this.messageRepository.getMessages(chat_tg_id, { limit, offset });
 
         if (!rows.length) return [];
 
+        return this.groupRows(rows).map((group) => this.toFullMessage(group));
+    }
+
+    async getFullMessagesInDateRange(chat_tg_id: number, from: number, to: number): Promise<FullMessageModel[]> {
+        const rows = await this.messageRepository.getMessagesInDateRange(chat_tg_id, { from, to });
+
+        if (!rows.length) return [];
+
+        return this.groupRows(rows).map((group) => this.toFullMessage(group));
+    }
+
+    private groupRows(rows: any[]): any[][] {
         const groups = new Map<number, any[]>();
 
         for (const row of rows) {
@@ -331,7 +354,7 @@ export class HoloService {
             }
         }
 
-        return [...groups.values()].map((group) => this.toFullMessage(group));
+        return [...groups.values()];
     }
 
     private toFullMessage(rows: any[]): FullMessageModel {
@@ -363,5 +386,42 @@ export class HoloService {
 
     deleteMessage(id: number) {
         return this.messageRepository.deleteById(id);
+    }
+
+    calculateChatSummaryMetadata(messages: FullMessageModel[]): ChatSummaryMetadata {
+        const attachments = messages.flatMap((message) => message.attachments);
+
+        const attachmentsCount: Record<string, number> = {};
+
+        for (const attachment of attachments) {
+            const typeName = ATTACHMENT_TYPE_NAMES[attachment.type];
+            attachmentsCount[typeName] = (attachmentsCount[typeName] ?? 0) + 1;
+        }
+
+        let images = 0;
+        let audioDuration = 0;
+        let videoDuration = 0;
+
+        for (const attachment of attachments) {
+            if (IMAGE_TYPES.includes(attachment.type)) {
+                images++;
+            } else if (AUDIO_TYPES.includes(attachment.type)) {
+                audioDuration += attachment.duration || 0;
+            } else if (VIDEO_TYPES.includes(attachment.type)) {
+                videoDuration += attachment.duration || 0;
+            }
+        }
+
+        return {
+            messagesCount: messages.length,
+            attachmentsCount,
+            audioDuration,
+            videoDuration,
+            estimate:
+                (messages.length / 100) * MESSAGE_PROCESS_MULTIPLIER +
+                images * IMAGE_PROCESS_MULTIPLIER +
+                audioDuration * AUDIO_PROCESS_MULTIPLIER +
+                videoDuration * VIDEO_PROCESS_MULTIPLIER,
+        };
     }
 }

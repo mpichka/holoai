@@ -57,7 +57,7 @@ export class MessageRepository {
         const ids = await this.knex('messages as m')
             .innerJoin('chats as c', 'c.id', 'm.chat_id')
             .where({ 'c.tg_id': chat_tg_id })
-            .orderBy('m.sent_at', 'desc')
+            .orderBy('m.sent_at', 'asc')
             .limit(limit)
             .offset(offset)
             .select('m.id');
@@ -74,7 +74,31 @@ export class MessageRepository {
                 ids.map((row) => row.id),
             )
             .select(MESSAGE_SELECT_ALIASES)
-            .orderBy('m.sent_at', 'desc')
+            .orderBy('m.sent_at', 'asc')
+            .orderBy('a.id');
+    }
+
+    async getMessagesInDateRange(chat_tg_id: number, { from, to }: { from: number; to: number }): Promise<any[]> {
+        const ids = await this.knex('messages as m')
+            .innerJoin('chats as c', 'c.id', 'm.chat_id')
+            .where({ 'c.tg_id': chat_tg_id })
+            .whereBetween('m.sent_at', [from, to])
+            .orderBy('m.sent_at', 'asc')
+            .select('m.id');
+
+        if (!ids.length) return [];
+
+        return this.knex('messages as m')
+            .innerJoin('users as u', 'u.id', 'm.user_id')
+            .innerJoin('chats as c', 'c.id', 'm.chat_id')
+            .leftOuterJoin('attachments_to_messages as atm', 'atm.message_id', 'm.id')
+            .leftOuterJoin('attachments as a', 'a.id', 'atm.attachment_id')
+            .whereIn(
+                'm.id',
+                ids.map((row) => row.id),
+            )
+            .select(MESSAGE_SELECT_ALIASES)
+            .orderBy('m.sent_at', 'asc')
             .orderBy('a.id');
     }
 

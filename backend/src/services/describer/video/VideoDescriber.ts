@@ -18,9 +18,10 @@ export class VideoDescriber {
     async describe(data: string, mimeType?: string, duration?: number, size?: number): Promise<string | null> {
         let file: string | null = data;
 
-        if (!duration || duration > this.MAX_DURATION_IN_SECONDS) {
-            file = await trimToFirstSeconds(data, mimeType || 'application/octet-stream', this.MAX_DURATION_IN_SECONDS);
-        } else if (!size || size > this.MAX_FILE_SIZE_IN_BYTES) {
+        const lengthExceeded = !duration || duration > this.MAX_DURATION_IN_SECONDS;
+        const sizeExceeded = !size || size > this.MAX_FILE_SIZE_IN_BYTES;
+
+        if (lengthExceeded || sizeExceeded) {
             file = await trimToFirstSeconds(data, mimeType || 'application/octet-stream', this.MAX_DURATION_IN_SECONDS);
         }
 

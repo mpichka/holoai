@@ -1,3 +1,5 @@
 export * from './commands';
-export * from './identity';
+export * from './fallbacks';
+export * from './identities';
+export * from './rejections';
 export * from './rules';
