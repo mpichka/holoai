@@ -53,10 +53,17 @@ export class MessageRepository {
             .orderBy('a.id');
     }
 
-    async getMessages(chat_tg_id: number, { limit, offset }: { limit: number; offset: number }): Promise<any[]> {
+    async getMessages(
+        chat_tg_id: number,
+        { limit, offset, thread_tg_id }: { limit: number; offset: number; thread_tg_id?: number | null },
+    ): Promise<any[]> {
         const ids = await this.knex('messages as m')
             .innerJoin('chats as c', 'c.id', 'm.chat_id')
             .where({ 'c.tg_id': chat_tg_id })
+            .modify((query) => {
+                if (thread_tg_id == null) query.whereNull('m.thread_tg_id');
+                else query.where('m.thread_tg_id', thread_tg_id);
+            })
             .orderBy('m.sent_at', 'asc')
             .limit(limit)
             .offset(offset)
@@ -71,17 +78,24 @@ export class MessageRepository {
             .leftOuterJoin('attachments as a', 'a.id', 'atm.attachment_id')
             .whereIn(
                 'm.id',
-                ids.map((row) => row.id),
+                ids.map((row: { id: number }) => row.id),
             )
             .select(MESSAGE_SELECT_ALIASES)
             .orderBy('m.sent_at', 'asc')
             .orderBy('a.id');
     }
 
-    async getMessagesInDateRange(chat_tg_id: number, { from, to }: { from: number; to: number }): Promise<any[]> {
+    async getMessagesInDateRange(
+        chat_tg_id: number,
+        { from, to, thread_tg_id }: { from: number; to: number; thread_tg_id?: number | null },
+    ): Promise<any[]> {
         const ids = await this.knex('messages as m')
             .innerJoin('chats as c', 'c.id', 'm.chat_id')
             .where({ 'c.tg_id': chat_tg_id })
+            .modify((query) => {
+                if (thread_tg_id == null) query.whereNull('m.thread_tg_id');
+                else query.where('m.thread_tg_id', thread_tg_id);
+            })
             .whereBetween('m.sent_at', [from, to])
             .orderBy('m.sent_at', 'asc')
             .select('m.id');
@@ -95,7 +109,7 @@ export class MessageRepository {
             .leftOuterJoin('attachments as a', 'a.id', 'atm.attachment_id')
             .whereIn(
                 'm.id',
-                ids.map((row) => row.id),
+                ids.map((row: { id: number }) => row.id),
             )
             .select(MESSAGE_SELECT_ALIASES)
             .orderBy('m.sent_at', 'asc')

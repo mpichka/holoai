@@ -345,8 +345,9 @@ export class HoloController {
 
     private async execChatSummaryCommand(message: FullMessageModel, args?: string) {
         const chatId = message.chat.tgId;
+        const threadId = message.threadTgId || null;
 
-        this.logger.info(`summarize -c ${chatId} -args ${JSON.stringify(args)}`);
+        this.logger.info(`summarize -c ${chatId} -th ${threadId || 'NULL'} -args ${JSON.stringify(args)}`);
 
         const ack = await this.holoAIService.taskAcknowledge(COMMAND.SUMMARIZE);
 
@@ -361,9 +362,9 @@ export class HoloController {
 
         let messages: FullMessageModel[];
         if (scope.mode === 'count') {
-            messages = await this.holoService.getFullMessages(chatId, scope.count);
+            messages = await this.holoService.getFullMessages(chatId, scope.count, threadId);
         } else {
-            messages = await this.holoService.getFullMessagesInDateRange(chatId, scope.from, scope.to);
+            messages = await this.holoService.getFullMessagesInDateRange(chatId, scope.from, scope.to, threadId);
         }
 
         if (!messages.length) {

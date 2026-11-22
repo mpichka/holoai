@@ -325,16 +325,26 @@ export class HoloService {
         return this.toFullMessage(rows);
     }
 
-    async getFullMessages(chat_tg_id: number, limit: number, offset: number = 0): Promise<FullMessageModel[]> {
-        const rows = await this.messageRepository.getMessages(chat_tg_id, { limit, offset });
+    async getFullMessages(
+        chat_tg_id: number,
+        limit: number,
+        thread_tg_id: number | null,
+        offset: number = 0,
+    ): Promise<FullMessageModel[]> {
+        const rows = await this.messageRepository.getMessages(chat_tg_id, { limit, offset, thread_tg_id });
 
         if (!rows.length) return [];
 
         return this.groupRows(rows).map((group) => this.toFullMessage(group));
     }
 
-    async getFullMessagesInDateRange(chat_tg_id: number, from: number, to: number): Promise<FullMessageModel[]> {
-        const rows = await this.messageRepository.getMessagesInDateRange(chat_tg_id, { from, to });
+    async getFullMessagesInDateRange(
+        chat_tg_id: number,
+        from: number,
+        to: number,
+        thread_tg_id: number | null,
+    ): Promise<FullMessageModel[]> {
+        const rows = await this.messageRepository.getMessagesInDateRange(chat_tg_id, { from, to, thread_tg_id });
 
         if (!rows.length) return [];
 
