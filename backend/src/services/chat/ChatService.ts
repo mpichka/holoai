@@ -60,13 +60,18 @@ export class ChatService {
             is_direct_messages: Boolean(sent.chat.is_direct_messages),
         });
 
+        let replyToId: number | undefined;
+        if (options.replyToMessageId) {
+            replyToId = await this.messageRepository.getIdByTelegramId(chatId, options.replyToMessageId);
+        }
+
         if (user) {
             await this.messageRepository.upsert({
                 chat_id: chat.id,
                 user_id: user.id,
                 message_tg_id: sent.message_id,
                 thread_tg_id: sent.message_thread_id,
-                reply_to_id: undefined,
+                reply_to_id: replyToId,
                 sent_at: sent.date,
                 text: sent.text || sent.caption,
             });

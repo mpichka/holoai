@@ -53,6 +53,15 @@ export class MessageRepository {
             .orderBy('a.id');
     }
 
+    async getIdByTelegramId(chat_tg_id: number, message_tg_id: number): Promise<number | undefined> {
+        const row = await this.knex('messages as m')
+            .innerJoin('chats as c', 'c.id', 'm.chat_id')
+            .where({ 'c.tg_id': chat_tg_id, 'm.message_tg_id': message_tg_id })
+            .first('m.id');
+
+        return row?.id;
+    }
+
     async getMessages(
         chat_tg_id: number,
         { limit, offset, thread_tg_id }: { limit: number; offset: number; thread_tg_id?: number | null },
