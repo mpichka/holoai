@@ -18,6 +18,8 @@ export class UserModel {
     lastName?: string;
     userName?: string;
     languageCode?: string;
+    spelledName?: string;
+    gender?: string;
 
     constructor(data: UserRecord) {
         this.id = data.id;
@@ -29,6 +31,8 @@ export class UserModel {
         this.lastName = data.last_name;
         this.userName = data.username;
         this.languageCode = data.language_code;
+        this.spelledName = data.spelledName;
+        this.gender = data.gender;
     }
 }
 

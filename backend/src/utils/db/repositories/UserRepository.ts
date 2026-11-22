@@ -11,6 +11,8 @@ export interface UserRecord {
     last_name?: string;
     username?: string;
     language_code?: string;
+    spelledName?: string;
+    gender?: string;
 }
 
 export type NewUserRecord = Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>;

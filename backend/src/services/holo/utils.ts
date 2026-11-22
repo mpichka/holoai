@@ -8,12 +8,18 @@ export const fillTemplate = (template: string, values: Record<string, string>) =
     template.replace(/\{(\w+)\}/g, (match, key) => values[key] ?? match);
 
 export const formatUserName = (user: UserModel): string => {
-    const { firstName, lastName, userName } = user;
+    const { firstName, lastName, userName, spelledName } = user;
 
+    if (spelledName?.trim()) return spelledName.trim();
     if (firstName?.trim()) return `${firstName} ${lastName || ''}`.trim();
     if (userName) return userName;
 
     return 'невідомцю';
+};
+
+export const formatGender = (user: UserModel): string => {
+    if (!user.gender) return 'unknown';
+    return user.gender;
 };
 
 export const formatEstimatedDuration = (seconds: number): string => {

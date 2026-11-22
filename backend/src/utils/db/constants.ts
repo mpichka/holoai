@@ -23,6 +23,8 @@ export const USER_COLS = [
     'last_name',
     'username',
     'language_code',
+    'spelled_name',
+    'gender',
 ] as const;
 
 export const CHAT_COLS = [

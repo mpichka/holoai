@@ -4,6 +4,7 @@ import { CHARACTER_NAMES, COMMAND, COMMANDS, CommandTypes, SUMMARIZE_CHUNK_SIZE 
 import type { FileDescriberService } from '../services/describer';
 import {
     fillTemplate,
+    formatGender,
     formatUserName,
     type FullMessageModel,
     type HoloAIService,
@@ -18,6 +19,7 @@ import type { Container } from '../utils/di';
 import { CHAT_ACTION, type ChatContext, type TelegramBot } from '../utils/tg';
 
 const ACTION_RESEND_TIMEOUT = 4500; // 4,5s
+const TELEGRAM_MESSAGE_TEXT_LIMIT = 4096;
 
 const chunk = <T>(arr: T[], size: number): T[][] => {
     const result: T[][] = [];
@@ -27,6 +29,70 @@ const chunk = <T>(arr: T[], size: number): T[][] => {
     }
 
     return result;
+};
+
+const splitSummaryIntoFragments = (summary: string): string[] => {
+    const paragraphs = summary
+        .split(/\n\s*\n/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean);
+    if (!paragraphs.length) return [summary.trim()];
+
+    const messages: string[] = [];
+    let current = '';
+
+    const fits = (text: string) => text.length <= TELEGRAM_MESSAGE_TEXT_LIMIT;
+    const addOversizedParagraph = (paragraph: string) => {
+        let fragment = '';
+
+        for (const word of paragraph.split(/\s+/)) {
+            const candidate = fragment ? `${fragment} ${word}` : word;
+            if (fits(candidate)) {
+                fragment = candidate;
+                continue;
+            }
+
+            if (fragment) messages.push(fragment);
+            fragment = word;
+
+            if (!fits(fragment)) {
+                const chars = Array.from(fragment);
+                fragment = '';
+                for (const char of chars) {
+                    const charCandidate = fragment + char;
+                    if (!fits(charCandidate) && fragment) {
+                        messages.push(fragment);
+                        fragment = char;
+                    } else {
+                        fragment = charCandidate;
+                    }
+                }
+                if (fragment) messages.push(fragment);
+                fragment = '';
+            }
+        }
+
+        if (fragment) messages.push(fragment);
+    };
+
+    for (const paragraph of paragraphs) {
+        const candidate = current ? `${current}\n\n${paragraph}` : paragraph;
+        if (fits(candidate)) {
+            current = candidate;
+            continue;
+        }
+
+        if (current) {
+            messages.push(current);
+            current = '';
+        }
+
+        if (fits(paragraph)) current = paragraph;
+        else addOversizedParagraph(paragraph);
+    }
+
+    if (current) messages.push(current);
+    return messages;
 };
 
 export class HoloController {
@@ -358,7 +424,16 @@ export class HoloController {
 
         const scope = await this.holoAIService.parseSummarizeArgs(args);
 
-        this.logger.info(`summarize -scope ${JSON.stringify(scope)}`);
+        const logScope =
+            scope.mode === 'range'
+                ? {
+                      ...scope,
+                      from: new Date(scope.from * 1000).toISOString(),
+                      to: new Date(scope.to * 1000).toISOString(),
+                  }
+                : scope;
+
+        this.logger.info(`summarize -scope ${JSON.stringify(logScope)}`);
 
         let messages: FullMessageModel[];
         if (scope.mode === 'count') {
@@ -412,6 +487,7 @@ export class HoloController {
             for (const message of messagesChunk) {
                 const time = toLocalTime(message.sentAt);
                 const sender = formatUserName(message.user);
+                const gender = formatGender(message.user);
                 const text = message.text?.trim() ?? '<empty_message>';
                 const repliedMessage = message.replyToId ? messagesById.get(message.replyToId) : undefined;
                 let replyContext = '';
@@ -422,10 +498,10 @@ export class HoloController {
                     const attachmentContext = repliedAttachments.length
                         ? `; attachments: ${repliedAttachments.join('; ')}`
                         : '';
-                    replyContext = `, reply to ${formatUserName(repliedMessage.user)}: ${repliedText}${attachmentContext}`;
+                    replyContext = `reply to ${formatUserName(repliedMessage.user)}: ${repliedText}${attachmentContext}`;
                 }
 
-                lines.push(`time: ${time}, sender: ${sender}${replyContext}, message: ${text}`);
+                lines.push(`time: ${time}, sender: ${sender}, gender: ${gender}, ${replyContext}, message: ${text}`);
 
                 const attachments = await getAttachmentLines(message);
                 if (attachments.length) lines.push(...attachments);
@@ -442,9 +518,9 @@ export class HoloController {
             return;
         }
 
-        const template = await this.holoAIService.generateTemplateResponse(COMMAND.SUMMARIZE);
+        // const template = await this.holoAIService.generateTemplateResponse(COMMAND.SUMMARIZE);
 
-        const username = formatUserName(message.user);
+        // const username = formatUserName(message.user);
 
         const summary = await this.holoAIService.summarizeTranscripts(transcripts);
 
@@ -454,8 +530,19 @@ export class HoloController {
             return;
         }
 
-        const res = fillTemplate(template, { username, data: `<blockquote>${summary}</blockquote>` });
+        // const renderSummary = (text: string) =>
+        //     fillTemplate(template, { username, data: `<blockquote>${text}</blockquote>` });
+        const responseChunks = splitSummaryIntoFragments(summary).map(
+            (message) => `<blockquote>${message}</blockquote>`,
+        );
 
-        await this.tg.editMessage(res, chatId, tgMessage.message_id, { parseMode: 'HTML' });
+        await this.tg.editMessage(responseChunks[0], chatId, tgMessage.message_id, { parseMode: 'HTML' });
+
+        for (const responseChunk of responseChunks.slice(1)) {
+            await this.tg.sendMessage(responseChunk, chatId, {
+                messageThreadId: message.threadTgId,
+                parseMode: 'HTML',
+            });
+        }
     }
 }
