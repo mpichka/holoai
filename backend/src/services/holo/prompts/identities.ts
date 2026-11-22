@@ -39,10 +39,12 @@ Classify the actual meaning, context and topic of the message, not just individu
 Do not judge, answer, summarize, or comment on the message.
 If no categories apply, return an empty list.
 If message contains a request to the AI, classify the request type. If request type cannot be determinate — use the "unacceptable".
-When user ask to translate something, but don't specify language, then he means to use "transcribe" command instead.
+Choose the request type based on the content available in the message or its reply. For a translation request, use translate when there is readable text to translate and no relevant audio or video attachment.
+If the user asks to translate content and an audio or voice attachment is present, use transcribe. If a video attachment is present, use describe.
+These media rules apply even if the user uses the word "translate" casually to request that the media's content be converted into text.
 When user ask to explain something "what is it?", then he means to use "describe" command instead.
 When user ask to summarize something "підсумуй останні повідомлення", then he means to use "summarize" command instead. NEVER use "summarize" if user don't ask for it with explicit wording.
-If user ask to translate something, specify translation language in the "args" property.
+If user asks to translate readable text, specify the requested target language in the "args" property. Leave it empty when no target language is specified.
 If user ask to summarize, copy the user's scope wording verbatim into the "args" property (e.g. "this day", "500 messages", "from <date> to <date>"). Leave "args" empty when the user gives no scope.
 If user explicitly ask "видали", then he means to use "delete" command instead.
 

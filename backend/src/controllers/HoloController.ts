@@ -292,7 +292,7 @@ export class HoloController {
             }
         }
 
-        const commands = await this.holoAIService.defineCommand(message.text);
+        const commands = await this.holoAIService.defineCommand(message, reply);
 
         const overrideAttempt = commands.find((command) => command.category === 'overriding_instructions');
 
@@ -415,7 +415,11 @@ export class HoloController {
     }
 
     private async execTranslateCommand(message: FullMessageModel, reply?: FullMessageModel | null, args?: string) {
-        const targetLanguage = await this.holoAIService.parseTranslateArgs(args);
+        let targetLanguage = args;
+
+        if (!targetLanguage) {
+            targetLanguage = await this.holoAIService.parseTranslateArgs(args);
+        }
 
         const text = reply?.text?.trim();
         if (!text) {

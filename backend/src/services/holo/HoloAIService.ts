@@ -2,9 +2,11 @@ import { DateTime } from 'luxon';
 import type winston from 'winston';
 import { COMMAND, CommandTypes } from '../../constants';
 import { toScopeEpoch } from '../../utils/datetime';
+import { ATTACHMENT_TYPE_NAMES } from '../../utils/db/repositories';
 import type { Container } from '../../utils/di';
 import { Llama } from '../../utils/llama';
 import { DEFAULT_MESSAGES_SUMMARIZE_COUNT } from './constants';
+import type { FullMessageModel } from './HoloService';
 import {
     DESCRIBE_MEDIA_FILE_USER_PROMPT,
     FAIL_TO_DELETE_OLD_REPLY_USER_PROMPT,
@@ -27,9 +29,9 @@ import {
     TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
     TASK_TEMPLATE_SYSTEM_PROMPT,
     TRANSCRIBE_MEDIA_FILE_USER_PROMPT,
-    TRANSLATE_SYSTEM_PROMPT,
     TRANSLATE_ARGS_SYSTEM_PROMPT,
     TRANSLATE_DESCRIPTION_SYSTEM_PROMPT,
+    TRANSLATE_SYSTEM_PROMPT,
 } from './prompts';
 import { type ChatSummaryMetadata, type Command, type SummarizeScope } from './types';
 import { formatEstimatedDuration, p } from './utils';
@@ -47,8 +49,31 @@ export class HoloAIService {
         this.logger = container.LoggerFactory.createLogger('HoloAI');
     }
 
-    async defineCommand(message?: string): Promise<Command[]> {
+    async defineCommand(message?: FullMessageModel, repliedMessage?: FullMessageModel | null): Promise<Command[]> {
         if (!message) return [];
+
+        const getAttachmentSummary = (attachments: FullMessageModel['attachments']) => {
+            const counts = new Map<string, number>();
+            for (const attachment of attachments) {
+                const type = ATTACHMENT_TYPE_NAMES[attachment.type] ?? 'unknown';
+                counts.set(type, (counts.get(type) ?? 0) + 1);
+            }
+            return [...counts.entries()].map(([type, count]) => ({ type, count }));
+        };
+
+        const classifierInput = {
+            text: message.text?.trim() || null,
+            hasText: Boolean(message.text?.trim()),
+            reply: repliedMessage
+                ? {
+                      hasReply: true,
+                      text: repliedMessage.text?.trim() || null,
+                      hasText: Boolean(repliedMessage.text?.trim()),
+                      attachments: getAttachmentSummary(repliedMessage.attachments),
+                  }
+                : null,
+            attachments: getAttachmentSummary(message.attachments),
+        };
 
         const res = await this.llamaM.request([
             {
@@ -57,7 +82,7 @@ export class HoloAIService {
             },
             {
                 role: 'user',
-                content: message,
+                content: JSON.stringify(classifierInput),
             },
         ]);
 
