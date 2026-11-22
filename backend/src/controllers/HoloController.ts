@@ -2,6 +2,7 @@ import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
 import { CHARACTER_NAMES, COMMAND, COMMANDS, CommandTypes, SUMMARIZE_CHUNK_SIZE } from '../constants';
 import type { FileDescriberService } from '../services/describer';
+import type { ChatService } from '../services/chat/ChatService';
 import {
     fillTemplate,
     formatGender,
@@ -100,6 +101,7 @@ export class HoloController {
     holoAIService: HoloAIService;
     triggerService: TriggerService;
     fileDescriberService: FileDescriberService;
+    chatService: ChatService;
     tg: TelegramBot;
     logger: winston.Logger;
 
@@ -108,6 +110,7 @@ export class HoloController {
         this.holoAIService = container.HoloAIService;
         this.triggerService = container.TriggerService;
         this.fileDescriberService = container.FileDescriberService;
+        this.chatService = container.ChatService;
         this.tg = container.TelegramBot;
         this.logger = container.LoggerFactory.createLogger('Holo');
     }
@@ -143,15 +146,15 @@ export class HoloController {
     }
 
     async processMessage(trigger: Trigger, message: FullMessageModel, repliedMessage: FullMessageModel | null) {
-        await this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
+        await this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
         const typing = setInterval(() => {
-            this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
+            this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
         }, ACTION_RESEND_TIMEOUT);
 
         try {
             await this.generateReply(trigger, message, repliedMessage);
         } finally {
-            this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
+            this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
             clearInterval(typing);
         }
     }
@@ -297,7 +300,7 @@ export class HoloController {
         if (overrideAttempt) {
             const res = await this.holoAIService.rejectOverrideAttempt(message.text);
 
-            return this.tg.sendMessage(res, message.chat.tgId, {
+            return this.chatService.sendMessage(res, message.chat.tgId, {
                 messageThreadId: message.threadTgId,
                 replyToMessageId: message.messageTgId,
             });
@@ -314,7 +317,7 @@ export class HoloController {
                         case 'unacceptable': {
                             const res = await this.holoAIService.rejectUnacceptable(message.text);
 
-                            return await this.tg.sendMessage(res, message.chat.tgId, {
+                            return await this.chatService.sendMessage(res, message.chat.tgId, {
                                 messageThreadId: message.threadTgId,
                                 replyToMessageId: message.messageTgId,
                             });
@@ -341,7 +344,7 @@ export class HoloController {
         if (!reply || reply.user.tgId !== this.tg.botId) {
             const aiRes = await this.holoAIService.failToDeleteReply();
 
-            await this.tg.sendMessage(aiRes, message.chat.tgId, {
+            await this.chatService.sendMessage(aiRes, message.chat.tgId, {
                 messageThreadId: message.threadTgId,
                 replyToMessageId: message.messageTgId,
             });
@@ -350,14 +353,13 @@ export class HoloController {
         }
 
         try {
-            await this.tg.deleteMessage(reply.chat.tgId, reply.messageTgId);
-            await this.holoService.deleteMessage(reply.id);
+            await this.chatService.deleteMessage(reply.chat.tgId, reply.messageTgId);
         } catch (error) {
             this.logger.warn(`Error deleting message; -c ${reply.chat.tgId} -m ${reply.messageTgId}\nError: ${error}`);
 
             const aiRes = await this.holoAIService.failToDeleteReply(true);
 
-            await this.tg.sendMessage(aiRes, message.chat.tgId, {
+            await this.chatService.sendMessage(aiRes, message.chat.tgId, {
                 messageThreadId: message.threadTgId,
                 replyToMessageId: message.messageTgId,
             });
@@ -372,7 +374,7 @@ export class HoloController {
     ) {
         const ack = await this.holoAIService.taskAcknowledge(task);
 
-        const tgMessage = await this.tg.sendMessage(ack, message.chat.tgId, {
+        const tgMessage = await this.chatService.sendMessage(ack, message.chat.tgId, {
             messageThreadId: message.threadTgId,
             replyToMessageId: message.messageTgId,
         });
@@ -381,7 +383,7 @@ export class HoloController {
 
         if (!reply || !attachments?.length) {
             const failRes = await this.holoAIService.taskFail(task);
-            await this.tg.editMessage(failRes, tgMessage.chat.id, tgMessage.message_id);
+            await this.chatService.editMessage(failRes, tgMessage.chat.id, tgMessage.message_id);
             return;
         }
 
@@ -393,7 +395,7 @@ export class HoloController {
 
         if (!descriptions.length) {
             const failRes = await this.holoAIService.taskFail(task);
-            await this.tg.editMessage(failRes, tgMessage.chat.id, tgMessage.message_id);
+            await this.chatService.editMessage(failRes, tgMessage.chat.id, tgMessage.message_id);
         }
 
         const template = await this.holoAIService.generateTemplateResponse(task);
@@ -406,7 +408,7 @@ export class HoloController {
         }
 
         const res = fillTemplate(template, { username, data: `<blockquote>${description}</blockquote>` });
-        await this.tg.editMessage(res, tgMessage.chat.id, tgMessage.message_id, { parseMode: 'HTML' });
+        await this.chatService.editMessage(res, tgMessage.chat.id, tgMessage.message_id, { parseMode: 'HTML' });
     }
 
     private async execChatSummaryCommand(message: FullMessageModel, args?: string) {
@@ -417,7 +419,7 @@ export class HoloController {
 
         const ack = await this.holoAIService.taskAcknowledge(COMMAND.SUMMARIZE);
 
-        const tgMessage = await this.tg.sendMessage(ack, chatId, {
+        const tgMessage = await this.chatService.sendMessage(ack, chatId, {
             messageThreadId: message.threadTgId,
             replyToMessageId: message.messageTgId,
         });
@@ -444,14 +446,14 @@ export class HoloController {
 
         if (!messages.length) {
             const res = await this.holoAIService.taskFail(COMMAND.SUMMARIZE);
-            await this.tg.editMessage(res, chatId, tgMessage.message_id);
+            await this.chatService.editMessage(res, chatId, tgMessage.message_id);
             return;
         }
 
         const meta = this.holoService.calculateChatSummaryMetadata(messages);
 
         const estimateRes = await this.holoAIService.summarizeEstimate(meta);
-        await this.tg.editMessage(estimateRes, chatId, tgMessage.message_id);
+        await this.chatService.editMessage(estimateRes, chatId, tgMessage.message_id);
 
         const transcripts: string[] = [];
         const messagesById = new Map(messages.map((chatMessage) => [chatMessage.id, chatMessage]));
@@ -514,7 +516,7 @@ export class HoloController {
 
         if (!transcripts.length) {
             const res = await this.holoAIService.taskFail(COMMAND.SUMMARIZE);
-            await this.tg.editMessage(res, chatId, tgMessage.message_id);
+            await this.chatService.editMessage(res, chatId, tgMessage.message_id);
             return;
         }
 
@@ -526,7 +528,7 @@ export class HoloController {
 
         if (!summary) {
             const res = await this.holoAIService.taskFail(COMMAND.SUMMARIZE);
-            await this.tg.editMessage(res, chatId, tgMessage.message_id);
+            await this.chatService.editMessage(res, chatId, tgMessage.message_id);
             return;
         }
 
@@ -536,10 +538,10 @@ export class HoloController {
             (message) => `<blockquote>${message}</blockquote>`,
         );
 
-        await this.tg.editMessage(responseChunks[0], chatId, tgMessage.message_id, { parseMode: 'HTML' });
+        await this.chatService.editMessage(responseChunks[0], chatId, tgMessage.message_id, { parseMode: 'HTML' });
 
         for (const responseChunk of responseChunks.slice(1)) {
-            await this.tg.sendMessage(responseChunk, chatId, {
+            await this.chatService.sendMessage(responseChunk, chatId, {
                 messageThreadId: message.threadTgId,
                 parseMode: 'HTML',
             });

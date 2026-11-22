@@ -1,5 +1,6 @@
 import * as awilix from 'awilix';
 import { HoloController } from '../../controllers/HoloController';
+import { ChatService } from '../../services/chat/ChatService';
 import { FileDescriberService } from '../../services/describer';
 import { HoloAIService, HoloService } from '../../services/holo';
 import { TriggerService } from '../../services/trigger';
@@ -61,6 +62,7 @@ export class DIContainerFactory {
             TriggerService: awilix.asClass(TriggerService, SINGLETON),
             HoloService: awilix.asClass(HoloService, SINGLETON),
             HoloAIService: awilix.asClass(HoloAIService, SINGLETON),
+            ChatService: awilix.asClass(ChatService, SINGLETON),
         });
 
         container.register({

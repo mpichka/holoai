@@ -1,4 +1,5 @@
 import type { HoloController } from '../../controllers/HoloController';
+import { ChatService } from '../../services/chat/ChatService';
 import type { FileDescriberService } from '../../services/describer';
 import type { HoloAIService, HoloService } from '../../services/holo';
 import type { TriggerService } from '../../services/trigger';
@@ -24,4 +25,5 @@ export type Container = {
     TriggerService: TriggerService;
     HoloService: HoloService;
     HoloAIService: HoloAIService;
+    ChatService: ChatService;
 };

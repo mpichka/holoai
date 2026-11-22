@@ -123,4 +123,17 @@ export class MessageRepository {
     async deleteById(id: number) {
         await this.knex('messages').where({ id }).delete();
     }
+
+    async updateByTelegramId(chat_tg_id: number, message_tg_id: number, text: string) {
+        const chat = this.knex('chats').select('id').where({ tg_id: chat_tg_id });
+        await this.knex('messages')
+            .whereIn('chat_id', chat)
+            .andWhere({ message_tg_id })
+            .update({ text });
+    }
+
+    async deleteByTelegramId(chat_tg_id: number, message_tg_id: number) {
+        const chat = this.knex('chats').select('id').where({ tg_id: chat_tg_id });
+        await this.knex('messages').whereIn('chat_id', chat).andWhere({ message_tg_id }).delete();
+    }
 }
