@@ -414,9 +414,6 @@ export class HoloService {
 
         return {
             messagesCount: messages.length,
-            attachmentsCount,
-            audioDuration,
-            videoDuration,
             estimate:
                 (messages.length / 100) * MESSAGE_PROCESS_MULTIPLIER +
                 images * IMAGE_PROCESS_MULTIPLIER +

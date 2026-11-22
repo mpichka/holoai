@@ -333,17 +333,7 @@ export class HoloAIService {
     }
 
     async summarizeEstimate(meta: ChatSummaryMetadata): Promise<string> {
-        const parts = [`Messages: ${meta.messagesCount}`];
-
-        const attachments = Object.entries(meta.attachmentsCount).map(([type, count]) => `${type} x ${count}`);
-        if (attachments.length) parts.push(`Attachments: ${attachments.join(', ')}`);
-
-        parts.push(`Audio duration: ${meta.audioDuration}`);
-        parts.push(`Video duration: ${meta.videoDuration}`);
-
-        const stats = parts.join('. ') + '.';
-
-        const estimate = formatEstimatedDuration(meta.estimate);
+        const estimate = `Messages count: ${meta.messagesCount}. Approximate estimate: ${formatEstimatedDuration(meta.estimate)}`;
 
         const res = await this.llamaT.request(
             [
@@ -353,7 +343,7 @@ export class HoloAIService {
                 },
                 {
                     role: 'user',
-                    content: SUMMARIZE_CHAT_USER_PROMPT + p(stats) + p(`Approximate estimate: ${estimate}`),
+                    content: SUMMARIZE_CHAT_USER_PROMPT + p(estimate),
                 },
             ],
             'low',

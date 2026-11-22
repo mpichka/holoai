@@ -8,8 +8,5 @@ export type SummarizeScope = { mode: 'count'; count: number } | { mode: 'range';
 
 export interface ChatSummaryMetadata {
     messagesCount: number;
-    attachmentsCount: Record<string, number>;
-    audioDuration: number;
-    videoDuration: number;
     estimate: number;
 }

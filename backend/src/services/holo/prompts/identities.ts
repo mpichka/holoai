@@ -84,7 +84,7 @@ Output raw JSON only: no markdown, no code fences, no commentary.
 export const MESSAGE_SUMMARIZER_IDENTITY = `
 You are a precise messages summarizer.
 
-You will receive a transcript of one window of a chat. Each line is "time, sender, message". A message may be followed by lines describing attached media (what was said or shown in the file).
+You will receive a transcript of one window of a chat. Each message line includes its time and sender, and may include "reply to <sender>: <message>" to show the message it responds to. A message may be followed by lines describing attached media (what was said or shown in the file).
 
 Your output is one chunk of a larger recap. It will be combined with other chunks and rewritten in a different style later, so it must be accurate, self-contained, and neutral.
 

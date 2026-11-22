@@ -378,6 +378,33 @@ export class HoloController {
         await this.tg.editMessage(estimateRes, chatId, tgMessage.message_id);
 
         const transcripts: string[] = [];
+        const messagesById = new Map(messages.map((chatMessage) => [chatMessage.id, chatMessage]));
+        const attachmentLinesByMessageId = new Map<number, string[]>();
+
+        const getAttachmentLines = async (chatMessage: FullMessageModel) => {
+            const cachedLines = attachmentLinesByMessageId.get(chatMessage.id);
+            if (cachedLines) return cachedLines;
+
+            const attachmentLines: string[] = [];
+            for (const attachment of chatMessage.attachments) {
+                const att = await this.fileDescriberService.describe(attachment);
+
+                if (!att) continue;
+
+                const typeName = ATTACHMENT_TYPE_NAMES[att.type] ?? 'attachment';
+                let attachmentLine = `[${typeName}]`;
+
+                if (att.performer) attachmentLine += ` performer: ${att.performer.trim()}`;
+                if (att.rel.caption?.trim()) attachmentLine += ` caption: ${att.rel.caption.trim()}`;
+                if (att.ai_description?.trim()) attachmentLine += `\n${att.ai_description.trim()}`;
+
+                attachmentLines.push(attachmentLine);
+            }
+
+            attachmentLinesByMessageId.set(chatMessage.id, attachmentLines);
+            return attachmentLines;
+        };
+
         for (const messagesChunk of chunk(messages, SUMMARIZE_CHUNK_SIZE)) {
             const lines: string[] = [];
 
@@ -385,23 +412,22 @@ export class HoloController {
                 const time = toLocalTime(message.sentAt);
                 const sender = formatUserName(message.user);
                 const text = message.text?.trim() ?? '<empty_message>';
+                const repliedMessage = message.replyToId ? messagesById.get(message.replyToId) : undefined;
+                let replyContext = '';
 
-                lines.push(`time: ${time}, sender: ${sender}, message: ${text}`);
-
-                for (const attachment of message.attachments) {
-                    const att = await this.fileDescriberService.describe(attachment);
-
-                    if (!att) continue;
-
-                    const typeName = ATTACHMENT_TYPE_NAMES[att.type] ?? 'attachment';
-                    let attachmentLine = `[${typeName}]`;
-
-                    if (att.performer) attachmentLine += ` performer: ${att.performer.trim()}`;
-                    if (att.rel.caption?.trim()) attachmentLine += ` caption: ${att.rel.caption.trim()}`;
-                    if (att.ai_description?.trim()) attachmentLine += `\n${att.ai_description.trim()}`;
-
-                    lines.push(attachmentLine);
+                if (repliedMessage) {
+                    const repliedText = repliedMessage.text?.trim() ?? '<empty_message>';
+                    const repliedAttachments = await getAttachmentLines(repliedMessage);
+                    const attachmentContext = repliedAttachments.length
+                        ? `; attachments: ${repliedAttachments.join('; ')}`
+                        : '';
+                    replyContext = `, reply to ${formatUserName(repliedMessage.user)}: ${repliedText}${attachmentContext}`;
                 }
+
+                lines.push(`time: ${time}, sender: ${sender}${replyContext}, message: ${text}`);
+
+                const attachments = await getAttachmentLines(message);
+                if (attachments.length) lines.push(...attachments);
             }
 
             const transcript = await this.holoAIService.summarizeMessagesChunk(lines);
@@ -429,6 +455,6 @@ export class HoloController {
 
         const res = fillTemplate(template, { username, data: `<blockquote>${summary}</blockquote>` });
 
-        await this.tg.editMessage(res, chatId, tgMessage.message_id);
+        await this.tg.editMessage(res, chatId, tgMessage.message_id, { parseMode: 'HTML' });
     }
 }
