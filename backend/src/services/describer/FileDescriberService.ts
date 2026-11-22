@@ -17,9 +17,9 @@ export class FileDescriberService {
     tg: TelegramBot;
 
     constructor(container: Container) {
-        this.imageDescriber = new ImageDescriber(container.Llama);
-        this.audioDescriber = new AudioDescriber(container.Llama);
-        this.videoDescriber = new VideoDescriber(container.Llama);
+        this.imageDescriber = new ImageDescriber(container.LlamaM);
+        this.audioDescriber = new AudioDescriber(container.LlamaM);
+        this.videoDescriber = new VideoDescriber(container.LlamaM);
 
         this.logger = container.LoggerFactory.createLogger('FileDescriber');
         this.attachmentRepository = container.Database.attachmentRepository;

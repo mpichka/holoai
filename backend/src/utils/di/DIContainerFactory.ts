@@ -41,7 +41,18 @@ export class DIContainerFactory {
             LoggerFactory: awilix.asValue(LoggerFactory),
             Database: awilix.asClass(Database, SINGLETON),
             Router: awilix.asClass(Router, SINGLETON),
-            Llama: awilix.asClass(Llama, SINGLETON),
+            LlamaM: awilix.asValue(
+                new Llama(
+                    process.env.LLAMA_MULTIMODAL || 'http://localhost:8080/v1',
+                    LoggerFactory.createLogger('LlamaM'),
+                ),
+            ),
+            LlamaT: awilix.asValue(
+                new Llama(
+                    process.env.LLAMA_TEXT_RICH || 'http://localhost:8081/v1',
+                    LoggerFactory.createLogger('LlamaT'),
+                ),
+            ),
             TelegramBot: awilix.asClass(TelegramBot, SINGLETON),
         });
 

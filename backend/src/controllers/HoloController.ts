@@ -73,6 +73,10 @@ export class HoloController {
 
         if (!trigger) return; // skip unrelated messages
 
+        void this.processMessage(trigger, message, repliedMessage).catch((err) => this.logger.error(err));
+    }
+
+    async processMessage(trigger: Trigger, message: FullMessageModel, repliedMessage: FullMessageModel | null) {
         await this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
         const typing = setInterval(() => {
             this.tg.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);

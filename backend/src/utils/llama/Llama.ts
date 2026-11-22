@@ -1,5 +1,4 @@
 import type winston from 'winston';
-import type { Container } from '../di';
 import type {
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -29,14 +28,10 @@ export class Llama {
     completionUrl: string;
     logger: winston.Logger;
 
-    constructor(container: Container) {
-        this.logger = container.LoggerFactory.createLogger('Llama');
-        this.baseUrl = process.env.LLAMA_URL || 'http://localhost:8080/v1';
-        this.completionUrl = `${this.baseUrl}/chat/completions`;
-    }
-
-    public setUrl(url: string) {
+    constructor(url: string, logger: winston.Logger) {
+        this.logger = logger;
         this.baseUrl = url || 'http://localhost:8080/v1';
+        this.completionUrl = `${this.baseUrl}/chat/completions`;
     }
 
     async health() {
