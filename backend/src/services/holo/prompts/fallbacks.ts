@@ -27,6 +27,11 @@ Request: Describe the image of video file attached to the reply message.
 Failure reason: The reply message does not contain an image or video file to describe.
 `.trim();
 
+export const FAIL_TO_TRANSLATE_USER_PROMPT = `
+Request: Translate the text of the reply message.
+Failure reason: The reply message does not contain any text to translate.
+`.trim();
+
 export const SUMMARIZE_FAIL_USER_PROMPT = `
 Request: Summarize the chat.
 Failure reason: There is nothing to summarize. The chat has no messages or no usable content to build a summary from.

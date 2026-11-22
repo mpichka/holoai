@@ -11,6 +11,7 @@ import {
     FAIL_TO_DELETE_REPLY_USER_PROMPT,
     FAIL_TO_DESCRIBE_USER_PROMPT,
     FAIL_TO_TRANSCRIBE_USER_PROMPT,
+    FAIL_TO_TRANSLATE_USER_PROMPT,
     FAILED_TASK_SYSTEM_PROMPT,
     MESSAGE_CLASSIFIER_IDENTITY,
     MESSAGE_SUMMARIZER_IDENTITY,
@@ -26,6 +27,8 @@ import {
     TASK_ACKNOWLEDGED_SYSTEM_PROMPT,
     TASK_TEMPLATE_SYSTEM_PROMPT,
     TRANSCRIBE_MEDIA_FILE_USER_PROMPT,
+    TRANSLATE_SYSTEM_PROMPT,
+    TRANSLATE_ARGS_SYSTEM_PROMPT,
     TRANSLATE_DESCRIPTION_SYSTEM_PROMPT,
 } from './prompts';
 import { type ChatSummaryMetadata, type Command, type SummarizeScope } from './types';
@@ -114,6 +117,10 @@ export class HoloAIService {
                 userPrompt = SUMMARIZE_FAIL_USER_PROMPT;
                 break;
             }
+            case COMMAND.TRANSLATE: {
+                userPrompt = FAIL_TO_TRANSLATE_USER_PROMPT;
+                break;
+            }
         }
 
         const res = await this.llamaT.request(
@@ -192,7 +199,7 @@ export class HoloAIService {
         return Llama.toResponse(res);
     }
 
-    async translate(text?: string): Promise<string> {
+    async translateDescription(text?: string): Promise<string> {
         if (!text) return '';
 
         const res = await this.llamaT.request([
@@ -203,6 +210,23 @@ export class HoloAIService {
             {
                 role: 'user',
                 content: text,
+            },
+        ]);
+
+        return Llama.toResponse(res);
+    }
+
+    async translate(text?: string, targetLanguage = 'Ukrainian'): Promise<string> {
+        if (!text) return '';
+
+        const res = await this.llamaT.request([
+            {
+                role: 'system',
+                content: TRANSLATE_SYSTEM_PROMPT,
+            },
+            {
+                role: 'user',
+                content: `Target language: ${targetLanguage}\n\nText to translate:\n<text>${text}</text>`,
             },
         ]);
 
@@ -307,6 +331,35 @@ export class HoloAIService {
         } catch (error) {
             this.logger.warn(`Failed to parse the summarize scope: ${error}`);
             return fallback;
+        }
+    }
+
+    async parseTranslateArgs(args: string = ''): Promise<string> {
+        const request = args.trim();
+        if (!request) return 'Ukrainian';
+
+        try {
+            const res = await this.llamaM.request(
+                [
+                    {
+                        role: 'system',
+                        content: TRANSLATE_ARGS_SYSTEM_PROMPT,
+                    },
+                    {
+                        role: 'user',
+                        content: request,
+                    },
+                ],
+                'low',
+            );
+
+            const language = Llama.toResponse(res)
+                .trim()
+                .replace(/^['"`]|['"`.]+$/g, '');
+            return language || 'Ukrainian';
+        } catch (error) {
+            this.logger.warn(`Failed to parse the translation target language: ${error}`);
+            return 'Ukrainian';
         }
     }
 

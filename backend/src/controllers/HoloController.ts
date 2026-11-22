@@ -1,8 +1,8 @@
 import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
 import { CHARACTER_NAMES, COMMAND, COMMANDS, CommandTypes, SUMMARIZE_CHUNK_SIZE } from '../constants';
-import type { FileDescriberService } from '../services/describer';
 import type { ChatService } from '../services/chat/ChatService';
+import type { FileDescriberService } from '../services/describer';
 import {
     fillTemplate,
     formatGender,
@@ -287,8 +287,7 @@ export class HoloController {
                     return this.execFileDescribeCommand(COMMAND.DESCRIBE, NON_AUDIO_TYPES, message, reply);
                 }
                 case COMMAND.TRANSLATE: {
-                    // TODO:
-                    return;
+                    return this.execTranslateCommand(message, reply, trigger.args);
                 }
             }
         }
@@ -331,6 +330,10 @@ export class HoloController {
                         }
                         case COMMAND.DESCRIBE: {
                             return this.execFileDescribeCommand(COMMAND.DESCRIBE, NON_AUDIO_TYPES, message, reply);
+                        }
+                        case COMMAND.TRANSLATE: {
+                            const targetLanguage = typeof command.args === 'string' ? command.args : undefined;
+                            return this.execTranslateCommand(message, reply, targetLanguage);
                         }
                     }
                 }
@@ -404,11 +407,31 @@ export class HoloController {
 
         let description = descriptions.join('\n\n');
         if (task !== 'transcribe') {
-            description = await this.holoAIService.translate(description);
+            description = await this.holoAIService.translateDescription(description);
         }
 
         const res = fillTemplate(template, { username, data: `<blockquote>${description}</blockquote>` });
         await this.chatService.editMessage(res, tgMessage.chat.id, tgMessage.message_id, { parseMode: 'HTML' });
+    }
+
+    private async execTranslateCommand(message: FullMessageModel, reply?: FullMessageModel | null, args?: string) {
+        const targetLanguage = await this.holoAIService.parseTranslateArgs(args);
+
+        const text = reply?.text?.trim();
+        if (!text) {
+            const failRes = await this.holoAIService.taskFail(COMMAND.TRANSLATE);
+            await this.chatService.sendMessage(failRes, message.chat.tgId, {
+                messageThreadId: message.threadTgId,
+                replyToMessageId: message.messageTgId,
+            });
+            return;
+        }
+
+        const translated = await this.holoAIService.translate(text, targetLanguage?.trim() || 'Ukrainian');
+        await this.chatService.sendMessage(`<blockquote>${translated}</blockquote>`, message.chat.tgId, {
+            messageThreadId: message.threadTgId,
+            replyToMessageId: message.messageTgId,
+        });
     }
 
     private async execChatSummaryCommand(message: FullMessageModel, args?: string) {
