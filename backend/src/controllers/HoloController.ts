@@ -431,6 +431,7 @@ export class HoloController {
         await this.chatService.sendMessage(`<blockquote>${translated}</blockquote>`, message.chat.tgId, {
             messageThreadId: message.threadTgId,
             replyToMessageId: message.messageTgId,
+            parseMode: 'HTML',
         });
     }
 
