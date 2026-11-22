@@ -1,148 +1,86 @@
-import type { Knex } from 'knex';
-import { ATTACHMENT_COLS, ATTACHMENT_TO_MESSAGE_COLS, CHAT_COLS, MESSAGE_COLS, USER_COLS } from '../constants';
-import { mapToAlias } from '../utils';
+import type { Message, Prisma, PrismaClient } from '../../../generated/prisma/client';
 
-export interface MessageRecord {
-    id: number;
-    created_at: number;
-    updated_at: number;
+const fullMessageInclude = {
+    chat: true,
+    user: true,
+    attachments: {
+        include: { attachment: true },
+        orderBy: { attachmentId: 'asc' },
+    },
+} satisfies Prisma.MessageInclude;
 
-    chat_id: number;
-    user_id: number;
-
-    message_tg_id: number;
-    thread_tg_id?: number;
-    reply_to_id?: number;
-    sent_at: number;
-    text?: string;
-}
-
-export type NewMessageRecord = Omit<MessageRecord, 'id' | 'created_at' | 'updated_at'>;
-
-const MESSAGE_SELECT_ALIASES = [
-    ...mapToAlias('m', 'm_', MESSAGE_COLS),
-    ...mapToAlias('u', 'u_', USER_COLS),
-    ...mapToAlias('c', 'c_', CHAT_COLS),
-    ...mapToAlias('a', 'a_', ATTACHMENT_COLS),
-    ...mapToAlias('atm', 'atm_', ATTACHMENT_TO_MESSAGE_COLS),
-];
+export type MessageWithRelations = Prisma.MessageGetPayload<{ include: typeof fullMessageInclude }>;
 
 export class MessageRepository {
-    constructor(private readonly knex: Knex) {}
+    constructor(private readonly prisma: PrismaClient) {}
 
-    async upsert(payload: NewMessageRecord, trx?: Knex.Transaction): Promise<MessageRecord> {
-        const conn = trx ?? this.knex;
+    async upsert(data: Prisma.MessageCreateManyInput, tx?: Prisma.TransactionClient): Promise<Message> {
+        const conn = tx ?? this.prisma;
+        const { chatId, messageTgId, threadTgId, replyToId, sentAt, text } = data;
 
-        const res = await conn('messages')
-            .insert(payload)
-            .onConflict(['chat_id', 'message_tg_id'])
-            .merge(['thread_tg_id', 'reply_to_id', 'sent_at', 'text'])
-            .returning<MessageRecord[]>('*');
-
-        return res[0];
+        return conn.message.upsert({
+            where: { chatId_messageTgId: { chatId, messageTgId } },
+            create: data,
+            update: { threadTgId, replyToId, sentAt, text },
+        });
     }
 
-    async getMessage(chat_tg_id: number, message_tg_id: number): Promise<any[]> {
-        return this.knex('messages as m')
-            .innerJoin('users as u', 'u.id', 'm.user_id')
-            .innerJoin('chats as c', 'c.id', 'm.chat_id')
-            .leftOuterJoin('attachments_to_messages as atm', 'atm.message_id', 'm.id')
-            .leftOuterJoin('attachments as a', 'a.id', 'atm.attachment_id')
-            .where({ 'c.tg_id': chat_tg_id, 'm.message_tg_id': message_tg_id })
-            .select(MESSAGE_SELECT_ALIASES)
-            .orderBy('a.id');
+    async getMessage(chatTgId: number, messageTgId: number): Promise<MessageWithRelations | null> {
+        return this.prisma.message.findFirst({
+            where: { messageTgId, chat: { tgId: chatTgId } },
+            include: fullMessageInclude,
+        });
     }
 
-    async getIdByTelegramId(chat_tg_id: number, message_tg_id: number): Promise<number | undefined> {
-        const row = await this.knex('messages as m')
-            .innerJoin('chats as c', 'c.id', 'm.chat_id')
-            .where({ 'c.tg_id': chat_tg_id, 'm.message_tg_id': message_tg_id })
-            .first('m.id');
+    async getIdByTelegramId(chatTgId: number, messageTgId: number): Promise<number | undefined> {
+        const row = await this.prisma.message.findFirst({
+            where: { messageTgId, chat: { tgId: chatTgId } },
+            select: { id: true },
+        });
 
         return row?.id;
     }
 
     async getMessages(
-        chat_tg_id: number,
-        { limit, offset, thread_tg_id }: { limit: number; offset: number; thread_tg_id?: number | null },
-    ): Promise<any[]> {
-        const ids = await this.knex('messages as m')
-            .innerJoin('chats as c', 'c.id', 'm.chat_id')
-            .where({ 'c.tg_id': chat_tg_id })
-            .modify((query) => {
-                if (thread_tg_id == null) query.whereNull('m.thread_tg_id');
-                else query.where('m.thread_tg_id', thread_tg_id);
-            })
-            .orderBy('m.sent_at', 'asc')
-            .limit(limit)
-            .offset(offset)
-            .select('m.id');
-
-        if (!ids.length) return [];
-
-        return this.knex('messages as m')
-            .innerJoin('users as u', 'u.id', 'm.user_id')
-            .innerJoin('chats as c', 'c.id', 'm.chat_id')
-            .leftOuterJoin('attachments_to_messages as atm', 'atm.message_id', 'm.id')
-            .leftOuterJoin('attachments as a', 'a.id', 'atm.attachment_id')
-            .whereIn(
-                'm.id',
-                ids.map((row: { id: number }) => row.id),
-            )
-            .select(MESSAGE_SELECT_ALIASES)
-            .orderBy('m.sent_at', 'asc')
-            .orderBy('a.id');
+        chatTgId: number,
+        { limit, offset, threadTgId }: { limit: number; offset: number; threadTgId?: number | null },
+    ): Promise<MessageWithRelations[]> {
+        return this.prisma.message.findMany({
+            where: { chat: { tgId: chatTgId }, threadTgId: threadTgId ?? null },
+            include: fullMessageInclude,
+            orderBy: [{ sentAt: 'asc' }, { id: 'asc' }],
+            skip: offset,
+            take: limit,
+        });
     }
 
     async getMessagesInDateRange(
-        chat_tg_id: number,
-        { from, to, thread_tg_id }: { from: number; to: number; thread_tg_id?: number | null },
-    ): Promise<any[]> {
-        const ids = await this.knex('messages as m')
-            .innerJoin('chats as c', 'c.id', 'm.chat_id')
-            .where({ 'c.tg_id': chat_tg_id })
-            .modify((query) => {
-                if (thread_tg_id == null) query.whereNull('m.thread_tg_id');
-                else query.where('m.thread_tg_id', thread_tg_id);
-            })
-            .whereBetween('m.sent_at', [from, to])
-            .orderBy('m.sent_at', 'asc')
-            .select('m.id');
-
-        if (!ids.length) return [];
-
-        return this.knex('messages as m')
-            .innerJoin('users as u', 'u.id', 'm.user_id')
-            .innerJoin('chats as c', 'c.id', 'm.chat_id')
-            .leftOuterJoin('attachments_to_messages as atm', 'atm.message_id', 'm.id')
-            .leftOuterJoin('attachments as a', 'a.id', 'atm.attachment_id')
-            .whereIn(
-                'm.id',
-                ids.map((row: { id: number }) => row.id),
-            )
-            .select(MESSAGE_SELECT_ALIASES)
-            .orderBy('m.sent_at', 'asc')
-            .orderBy('a.id');
+        chatTgId: number,
+        { from, to, threadTgId }: { from: number; to: number; threadTgId?: number | null },
+    ): Promise<MessageWithRelations[]> {
+        return this.prisma.message.findMany({
+            where: { chat: { tgId: chatTgId }, threadTgId: threadTgId ?? null, sentAt: { gte: from, lte: to } },
+            include: fullMessageInclude,
+            orderBy: [{ sentAt: 'asc' }, { id: 'asc' }],
+        });
     }
 
-    async markAsReply(id: number, reply_to_id: number) {
-        await this.knex('messages').where({ id }).update({ reply_to_id });
+    async markAsReply(id: number, replyToId: number) {
+        await this.prisma.message.updateMany({ where: { id }, data: { replyToId } });
     }
 
     async deleteById(id: number) {
-        await this.knex('messages').where({ id }).delete();
+        await this.prisma.message.deleteMany({ where: { id } });
     }
 
-    async updateByTelegramId(chat_tg_id: number, message_tg_id: number, text: string) {
-        const chat = this.knex('chats').select('id').where({ tg_id: chat_tg_id });
-        await this.knex('messages')
-            .whereIn('chat_id', chat)
-            .andWhere({ message_tg_id })
-            .update({ text });
+    async updateByTelegramId(chatTgId: number, messageTgId: number, text: string) {
+        await this.prisma.message.updateMany({
+            where: { messageTgId, chat: { tgId: chatTgId } },
+            data: { text },
+        });
     }
 
-    async deleteByTelegramId(chat_tg_id: number, message_tg_id: number) {
-        const chat = this.knex('chats').select('id').where({ tg_id: chat_tg_id });
-        await this.knex('messages').whereIn('chat_id', chat).andWhere({ message_tg_id }).delete();
+    async deleteByTelegramId(chatTgId: number, messageTgId: number) {
+        await this.prisma.message.deleteMany({ where: { messageTgId, chat: { tgId: chatTgId } } });
     }
 }

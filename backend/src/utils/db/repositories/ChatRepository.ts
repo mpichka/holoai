@@ -1,34 +1,16 @@
-import type { Knex } from 'knex';
-
-export interface ChatRecord {
-    id: number;
-    created_at: number;
-    updated_at: number;
-
-    tg_id: number;
-    type: string;
-    title?: string;
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-    is_forum: boolean;
-    is_direct_messages: boolean;
-}
-
-export type NewChatRecord = Omit<ChatRecord, 'id' | 'created_at' | 'updated_at'>;
+import type { Chat, Prisma, PrismaClient } from '../../../generated/prisma/client';
 
 export class ChatRepository {
-    constructor(private readonly knex: Knex) {}
+    constructor(private readonly prisma: PrismaClient) {}
 
-    async upsert(payload: NewChatRecord, trx?: Knex.Transaction): Promise<ChatRecord> {
-        const conn = trx ?? this.knex;
+    async upsert(data: Prisma.ChatCreateManyInput, tx?: Prisma.TransactionClient): Promise<Chat> {
+        const conn = tx ?? this.prisma;
+        const { tgId, type, title, username, isForum, isDirectMessages } = data;
 
-        const res = await conn('chats')
-            .insert(payload)
-            .onConflict('tg_id')
-            .merge(['type', 'title', 'username', 'is_forum', 'is_direct_messages'])
-            .returning<ChatRecord[]>('*');
-
-        return res[0];
+        return conn.chat.upsert({
+            where: { tgId },
+            create: data,
+            update: { type, title, username, isForum, isDirectMessages },
+        });
     }
 }

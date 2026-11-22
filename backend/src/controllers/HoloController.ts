@@ -191,15 +191,15 @@ export class HoloController {
         if (!user || !chat) return;
 
         const message = await this.holoService.upsertMessage(tgMessage, {
-            chat_id: chat.id,
-            user_id: user.id,
+            chatId: chat.id,
+            userId: user.id,
         });
 
         if (!message) return;
 
         const attachmentOptions = {
-            message_id: message.id,
-            media_group_id: tgMessage.media_group_id,
+            messageId: message.id,
+            mediaGroupId: tgMessage.media_group_id,
             caption: tgMessage.caption?.trim(),
         };
 
@@ -393,7 +393,7 @@ export class HoloController {
         const descriptions: string[] = [];
         for (const file of attachments) {
             const described = await this.fileDescriberService.describe(file);
-            if (described && described.ai_description) descriptions.push(described.ai_description);
+            if (described && described.aiDescription) descriptions.push(described.aiDescription);
         }
 
         if (!descriptions.length) {
@@ -502,7 +502,7 @@ export class HoloController {
 
                 if (att.performer) attachmentLine += ` performer: ${att.performer.trim()}`;
                 if (att.rel.caption?.trim()) attachmentLine += ` caption: ${att.rel.caption.trim()}`;
-                if (att.ai_description?.trim()) attachmentLine += `\n${att.ai_description.trim()}`;
+                if (att.aiDescription?.trim()) attachmentLine += `\n${att.aiDescription.trim()}`;
 
                 attachmentLines.push(attachmentLine);
             }

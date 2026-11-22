@@ -1,4 +1,4 @@
-import type { Knex } from 'knex';
+import type { Attachment, Prisma, PrismaClient } from '../../../generated/prisma/client';
 
 export const ATTACHMENT_TYPE = Object.freeze({
     AUDIO: 10,
@@ -12,11 +12,9 @@ export const ATTACHMENT_TYPE = Object.freeze({
     VIDEO: 40,
     VIDEO_NOTE: 41,
 });
-
 export const ATTACHMENT_TYPE_NAMES: Record<number, string> = Object.fromEntries(
     Object.entries(ATTACHMENT_TYPE).map(([name, value]) => [value, name.toLowerCase()] as [number, string]),
 );
-
 export const AUDIO_TYPES: number[] = [ATTACHMENT_TYPE.AUDIO, ATTACHMENT_TYPE.VOICE];
 export const IMAGE_TYPES: number[] = [ATTACHMENT_TYPE.PHOTO, ATTACHMENT_TYPE.LIVE_PHOTO, ATTACHMENT_TYPE.ANIMATION];
 export const VIDEO_TYPES: number[] = [ATTACHMENT_TYPE.VIDEO, ATTACHMENT_TYPE.VIDEO_NOTE];
@@ -26,46 +24,25 @@ export const STICKER_TYPES: number[] = [
     ATTACHMENT_TYPE.STICKER_VIDEO,
 ];
 export const NON_AUDIO_TYPES = [...IMAGE_TYPES, ...VIDEO_TYPES, ...STICKER_TYPES];
-
 export type StickerType =
     | (typeof ATTACHMENT_TYPE)['STICKER_PHOTO']
     | (typeof ATTACHMENT_TYPE)['STICKER_ANIMATION']
     | (typeof ATTACHMENT_TYPE)['STICKER_VIDEO'];
-
 export type AttachmentType = (typeof ATTACHMENT_TYPE)[keyof typeof ATTACHMENT_TYPE];
-
-export interface AttachmentRecord {
-    id: number;
-    created_at: number;
-    updated_at: number;
-
-    type: AttachmentType;
-    file_tg_uid: string;
-    file_size?: number;
-    mime_type?: string;
-    file_name?: string;
-    duration?: number;
-    performer?: string;
-
-    ai_description?: string;
-}
-
-export type NewAttachmentRecord = Omit<AttachmentRecord, 'id' | 'created_at' | 'updated_at' | 'ai_description'>;
-
 export class AttachmentRepository {
-    constructor(private readonly knex: Knex) {}
+    constructor(private readonly prisma: PrismaClient) {}
 
-    async upsert(payload: NewAttachmentRecord): Promise<AttachmentRecord> {
-        const res = await this.knex('attachments')
-            .insert(payload)
-            .onConflict('file_tg_uid')
-            .merge(['file_size', 'mime_type', 'file_name', 'duration', 'performer'])
-            .returning<AttachmentRecord[]>('*');
+    async upsert(data: Prisma.AttachmentCreateManyInput): Promise<Attachment> {
+        const { fileTgUid, fileSize, mimeType, fileName, duration, performer } = data;
 
-        return res[0];
+        return this.prisma.attachment.upsert({
+            where: { fileTgUid },
+            create: data,
+            update: { fileSize, mimeType, fileName, duration, performer },
+        });
     }
 
-    async setAiDescription(id: number, ai_description: string) {
-        await this.knex('attachments').where({ id }).update({ ai_description });
+    async setAiDescription(id: number, aiDescription: string) {
+        await this.prisma.attachment.updateMany({ where: { id }, data: { aiDescription } });
     }
 }

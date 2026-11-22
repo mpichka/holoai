@@ -1,11 +1,6 @@
-import type {
-    AttachmentRecord,
-    AttachmentToMessageRecord,
-    AttachmentType,
-    ChatRecord,
-    MessageRecord,
-    UserRecord,
-} from './repositories';
+import type { Attachment, AttachmentToMessage, Chat, Message, User } from '../../generated/prisma/client';
+import type { AttachmentType } from './repositories';
+import { optional } from './utils';
 
 export class UserModel {
     id: number;
@@ -21,18 +16,18 @@ export class UserModel {
     spelledName?: string;
     gender?: string;
 
-    constructor(data: UserRecord) {
+    constructor(data: User) {
         this.id = data.id;
-        this.createdAt = data.created_at;
-        this.updatedAt = data.updated_at;
-        this.tgId = data.tg_id;
-        this.isBot = data.is_bot;
-        this.firstName = data.first_name;
-        this.lastName = data.last_name;
-        this.userName = data.username;
-        this.languageCode = data.language_code;
-        this.spelledName = data.spelledName;
-        this.gender = data.gender;
+        this.createdAt = data.createdAt;
+        this.updatedAt = data.updatedAt;
+        this.tgId = Number(data.tgId);
+        this.isBot = data.isBot;
+        this.firstName = optional(data.firstName);
+        this.lastName = optional(data.lastName);
+        this.userName = optional(data.username);
+        this.languageCode = optional(data.languageCode);
+        this.spelledName = optional(data.spelledName);
+        this.gender = optional(data.gender);
     }
 }
 
@@ -50,17 +45,18 @@ export class ChatModel {
     isForum: boolean;
     isDirectMessages: boolean;
 
-    constructor(data: ChatRecord) {
+    constructor(data: Chat) {
         this.id = data.id;
-        this.createdAt = data.created_at;
-        this.updatedAt = data.updated_at;
-        this.tgId = data.tg_id;
+        this.createdAt = data.createdAt;
+        this.updatedAt = data.updatedAt;
+        this.tgId = Number(data.tgId);
         this.type = data.type;
-        this.firstName = data.first_name;
-        this.lastName = data.last_name;
-        this.userName = data.username;
-        this.isForum = data.is_forum;
-        this.isDirectMessages = data.is_direct_messages;
+        this.title = optional(data.title);
+        this.firstName = optional(data.firstName);
+        this.lastName = optional(data.lastName);
+        this.userName = optional(data.username);
+        this.isForum = data.isForum;
+        this.isDirectMessages = data.isDirectMessages;
     }
 }
 
@@ -74,12 +70,12 @@ export class AttachmentToMessageModel {
     // Multiple attachments sent as one message
     mediaGroupId?: string;
 
-    constructor(data: AttachmentToMessageRecord) {
-        this.attachmentId = data.attachment_id;
-        this.messageId = data.message_id;
-        this.fileTgId = data.file_tg_id;
-        this.caption = data.caption;
-        this.mediaGroupId = data.media_group_id;
+    constructor(data: AttachmentToMessage) {
+        this.attachmentId = data.attachmentId;
+        this.messageId = data.messageId;
+        this.fileTgId = data.fileTgId;
+        this.caption = optional(data.caption);
+        this.mediaGroupId = optional(data.mediaGroupId);
     }
 }
 
@@ -98,18 +94,18 @@ export class AttachmentModel {
 
     aiDescription?: string;
 
-    constructor(data: AttachmentRecord) {
+    constructor(data: Attachment) {
         this.id = data.id;
-        this.createdAt = data.created_at;
-        this.updatedAt = data.updated_at;
-        this.type = data.type;
-        this.fileTgUid = data.file_tg_uid;
-        this.fileSize = data.file_size;
-        this.mimeType = data.mime_type;
-        this.fileName = data.file_name;
-        this.duration = data.duration;
-        this.performer = data.performer;
-        this.aiDescription = data.ai_description;
+        this.createdAt = data.createdAt;
+        this.updatedAt = data.updatedAt;
+        this.type = data.type as AttachmentType;
+        this.fileTgUid = data.fileTgUid;
+        this.fileSize = optional(data.fileSize);
+        this.mimeType = optional(data.mimeType);
+        this.fileName = optional(data.fileName);
+        this.duration = optional(data.duration);
+        this.performer = optional(data.performer);
+        this.aiDescription = optional(data.aiDescription);
     }
 }
 
@@ -127,16 +123,16 @@ export class MessageModel {
     sentAt: number;
     text?: string;
 
-    constructor(data: MessageRecord) {
+    constructor(data: Message) {
         this.id = data.id;
-        this.createdAt = data.created_at;
-        this.updatedAt = data.updated_at;
-        this.chatId = data.chat_id;
-        this.userId = data.user_id;
-        this.messageTgId = data.message_tg_id;
-        this.threadTgId = data.thread_tg_id;
-        this.replyToId = data.reply_to_id;
-        this.sentAt = data.sent_at;
-        this.text = data.text;
+        this.createdAt = data.createdAt;
+        this.updatedAt = data.updatedAt;
+        this.chatId = data.chatId;
+        this.userId = data.userId;
+        this.messageTgId = data.messageTgId;
+        this.threadTgId = optional(data.threadTgId);
+        this.replyToId = optional(data.replyToId);
+        this.sentAt = data.sentAt ?? 0;
+        this.text = optional(data.text);
     }
 }

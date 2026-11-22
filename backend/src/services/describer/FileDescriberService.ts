@@ -27,13 +27,13 @@ export class FileDescriberService {
     }
 
     async describe(attachment: LinkedAttachmentModel): Promise<LinkedAttachmentModel | undefined> {
-        if (attachment.ai_description?.trim()) return attachment;
+        if (attachment.aiDescription?.trim()) return attachment;
 
         try {
-            const { data: tgData, mimeType: tgMimeType } = await this.tg.getFileContent(attachment.rel.file_tg_id);
+            const { data: tgData, mimeType: tgMimeType } = await this.tg.getFileContent(attachment.rel.fileTgId);
 
             const data = tgData.toString('base64');
-            const mimeType = tgMimeType || attachment.mime_type;
+            const mimeType = tgMimeType || attachment.mimeType || undefined;
 
             const kind = this.resolveKind(attachment.type, mimeType);
 
@@ -44,15 +44,15 @@ export class FileDescriberService {
                     break;
                 }
                 case 'audio': {
-                    description = await this.audioDescriber.describe(data, mimeType, attachment.performer);
+                    description = await this.audioDescriber.describe(data, mimeType, attachment.performer ?? undefined);
                     break;
                 }
                 case 'video': {
                     description = await this.videoDescriber.describe(
                         data,
                         mimeType,
-                        attachment.duration,
-                        attachment.file_size,
+                        attachment.duration ?? undefined,
+                        attachment.fileSize ?? undefined,
                     );
                     break;
                 }
@@ -70,7 +70,7 @@ export class FileDescriberService {
             }
 
             await this.attachmentRepository.setAiDescription(attachment.id, description);
-            attachment.ai_description = description;
+            attachment.aiDescription = description;
             return attachment;
         } catch (error) {
             const message = JSON.stringify({ error });

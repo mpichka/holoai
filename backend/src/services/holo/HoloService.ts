@@ -17,36 +17,27 @@ import {
     MESSAGE_PROCESS_MULTIPLIER,
     VIDEO_PROCESS_MULTIPLIER,
 } from '../../constants';
-import {
-    ATTACHMENT_COLS,
-    ATTACHMENT_TO_MESSAGE_COLS,
-    CHAT_COLS,
-    ChatModel,
-    MESSAGE_COLS,
-    MessageModel,
-    USER_COLS,
-    UserModel,
-    pickFromAlias,
-} from '../../utils/db';
+import type {
+    Attachment,
+    AttachmentToMessage,
+    Chat as ChatRecord,
+    Message as MessageRecord,
+    Prisma,
+    User as UserRecord,
+} from '../../generated/prisma/client';
+import { ChatModel, MessageModel, UserModel } from '../../utils/db';
 import {
     ATTACHMENT_TYPE,
     ATTACHMENT_TYPE_NAMES,
     AUDIO_TYPES,
     IMAGE_TYPES,
     VIDEO_TYPES,
-    type AttachmentRecord,
     type AttachmentRepository,
-    type AttachmentToMessageRecord,
     type AttachmentToMessageRepository,
-    type ChatRecord,
     type ChatRepository,
-    type MessageRecord,
     type MessageRepository,
-    type NewChatRecord,
-    type NewMessageRecord,
-    type NewUserRecord,
+    type MessageWithRelations,
     type StickerType,
-    type UserRecord,
     type UserRepository,
 } from '../../utils/db/repositories';
 import type { Container } from '../../utils/di';
@@ -54,24 +45,26 @@ import { ChatSummaryMetadata } from './types';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // One day
 
-interface CacheEntry<T> {
-    payload: T;
+interface CacheEntry<TInput, TRecord> {
+    // Input that produced the record; a matching input means the record is still up to date
+    input: TInput;
+    record: TRecord;
     timestamp: number;
 }
 
 interface MessageCreationOptions {
-    user_id: number;
-    chat_id: number;
-    reply_to_id?: number;
+    userId: number;
+    chatId: number;
+    replyToId?: number;
 }
 
 interface AttachmentCreationOptions {
-    message_id: number;
+    messageId: number;
     caption?: string;
-    media_group_id?: string;
+    mediaGroupId?: string;
 }
 
-export type LinkedAttachmentModel = AttachmentRecord & { rel: AttachmentToMessageRecord };
+export type LinkedAttachmentModel = Attachment & { rel: AttachmentToMessage };
 
 export type FullMessageModel = MessageModel & {
     chat: ChatModel;
@@ -86,8 +79,8 @@ export class HoloService {
     attachmentRepository: AttachmentRepository;
     attachmentToMessageRepository: AttachmentToMessageRepository;
 
-    private userCache = new Map<number, CacheEntry<UserRecord>>();
-    private chatCache = new Map<number, CacheEntry<ChatRecord>>();
+    private userCache = new Map<number, CacheEntry<Prisma.UserCreateManyInput, UserRecord>>();
+    private chatCache = new Map<number, CacheEntry<Prisma.ChatCreateManyInput, ChatRecord>>();
 
     constructor(container: Container) {
         const db = container.Database;
@@ -101,104 +94,101 @@ export class HoloService {
     async upsertTgUser(user?: User): Promise<UserRecord | null> {
         if (!user) return null;
 
-        const payload: NewUserRecord = {
-            tg_id: user.id,
-            is_bot: user.is_bot,
-            first_name: user.first_name,
-            last_name: user.last_name,
+        const payload: Prisma.UserCreateManyInput = {
+            tgId: user.id,
+            isBot: user.is_bot,
+            firstName: user.first_name,
+            lastName: user.last_name,
             username: user.username,
-            language_code: user.language_code,
+            languageCode: user.language_code,
         };
 
-        const cache = this.getCached<UserRecord>(this.userCache, payload);
+        const cached = this.getCached(this.userCache, user.id, payload);
+        if (cached) return cached;
 
-        if (cache) return cache;
+        const record = await this.userRepository.upsert(payload);
 
-        const data = await this.userRepository.upsert(payload);
+        this.userCache.set(user.id, { input: payload, record, timestamp: Date.now() });
 
-        this.userCache.set(payload.tg_id, { payload: data, timestamp: Date.now() });
-
-        return data;
+        return record;
     }
 
     async upsertTgChat(chat?: Chat): Promise<ChatRecord | null> {
         if (!chat) return null;
 
-        const payload: NewChatRecord = {
-            tg_id: chat.id,
+        const payload: Prisma.ChatCreateManyInput = {
+            tgId: chat.id,
             type: chat.type,
             title: chat.title,
-            first_name: chat.first_name,
-            last_name: chat.last_name,
+            firstName: chat.first_name,
+            lastName: chat.last_name,
             username: chat.username,
-            is_forum: Boolean(chat.is_forum),
-            is_direct_messages: Boolean(chat.is_direct_messages),
+            isForum: Boolean(chat.is_forum),
+            isDirectMessages: Boolean(chat.is_direct_messages),
         };
 
-        const cache = this.getCached<ChatRecord>(this.chatCache, payload);
+        const cached = this.getCached(this.chatCache, chat.id, payload);
+        if (cached) return cached;
 
-        if (cache) return cache;
+        const record = await this.chatRepository.upsert(payload);
 
-        const data = await this.chatRepository.upsert(payload);
+        this.chatCache.set(chat.id, { input: payload, record, timestamp: Date.now() });
 
-        this.chatCache.set(payload.tg_id, { payload: data, timestamp: Date.now() });
-
-        return data;
+        return record;
     }
 
     async upsertMessage(message: Message, options: MessageCreationOptions): Promise<MessageRecord | null> {
         if (!message) return null;
 
-        const payload: NewMessageRecord = {
-            chat_id: options.chat_id,
-            user_id: options.user_id,
-            message_tg_id: message.message_id,
-            thread_tg_id: message.message_thread_id,
-            reply_to_id: options.reply_to_id,
-            sent_at: message.date,
+        return this.messageRepository.upsert({
+            chatId: options.chatId,
+            userId: options.userId,
+            messageTgId: message.message_id,
+            threadTgId: message.message_thread_id,
+            replyToId: options.replyToId,
+            sentAt: message.date,
             text: message.text || message.caption,
-        };
-
-        return this.messageRepository.upsert(payload);
+        });
     }
 
-    private getCached<T>(cache: Map<number, CacheEntry<any>>, payload: { tg_id: number }): T | null {
-        const entry = cache.get(payload.tg_id);
+    private getCached<TInput extends object, TRecord>(
+        cache: Map<number, CacheEntry<TInput, TRecord>>,
+        tgId: number,
+        input: TInput,
+    ): TRecord | null {
+        const entry = cache.get(tgId);
         if (!entry) return null;
 
         if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
-            cache.delete(payload.tg_id);
+            cache.delete(tgId);
             return null;
         }
 
-        const cacheKeys = Object.keys(entry.payload);
-        const payloadKeys = Object.keys(payload);
+        const cachedInput = entry.input as Record<string, unknown>;
+        const nextInput = input as Record<string, unknown>;
+        const keys = new Set([...Object.keys(cachedInput), ...Object.keys(nextInput)]);
 
-        if (cacheKeys.length !== payloadKeys.length) return null;
-
-        for (const key of cacheKeys) {
-            if ((entry.payload as Record<string, unknown>)[key] !== (payload as Record<string, unknown>)[key]) {
-                return null;
-            }
+        for (const key of keys) {
+            if (cachedInput[key] !== nextInput[key]) return null;
         }
 
-        return entry.payload as T;
+        return entry.record;
     }
 
     async createAudioAttachment(audio: Audio, options: AttachmentCreationOptions) {
         const attachment = await this.attachmentRepository.upsert({
             type: ATTACHMENT_TYPE.AUDIO,
-            file_tg_uid: audio.file_unique_id,
-            file_size: audio.file_size,
+            fileTgUid: audio.file_unique_id,
+            fileSize: audio.file_size,
             duration: audio.duration,
-            mime_type: audio.mime_type,
-            file_name: audio.file_name,
+            mimeType: audio.mime_type,
+            fileName: audio.file_name,
             performer: audio.performer,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: audio.file_id,
+            attachmentId: attachment.id,
+            fileTgId: audio.file_id,
             ...options,
         });
     }
@@ -206,15 +196,15 @@ export class HoloService {
     async createVoiceAttachment(voice: Voice, options: AttachmentCreationOptions) {
         const attachment = await this.attachmentRepository.upsert({
             type: ATTACHMENT_TYPE.AUDIO,
-            file_tg_uid: voice.file_unique_id,
-            file_size: voice.file_size,
+            fileTgUid: voice.file_unique_id,
+            fileSize: voice.file_size,
             duration: voice.duration,
-            mime_type: voice.mime_type,
+            mimeType: voice.mime_type,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: voice.file_id,
+            attachmentId: attachment.id,
+            fileTgId: voice.file_id,
             ...options,
         });
     }
@@ -222,13 +212,13 @@ export class HoloService {
     async createPhotoAttachment(photo: PhotoSize, options: AttachmentCreationOptions) {
         const attachment = await this.attachmentRepository.upsert({
             type: ATTACHMENT_TYPE.PHOTO,
-            file_tg_uid: photo.file_unique_id,
-            file_size: photo.file_size,
+            fileTgUid: photo.file_unique_id,
+            fileSize: photo.file_size,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: photo.file_id,
+            attachmentId: attachment.id,
+            fileTgId: photo.file_id,
             ...options,
         });
     }
@@ -236,16 +226,16 @@ export class HoloService {
     async createAnimationAttachment(animation: Animation, options: AttachmentCreationOptions) {
         const attachment = await this.attachmentRepository.upsert({
             type: ATTACHMENT_TYPE.ANIMATION,
-            file_tg_uid: animation.file_unique_id,
-            file_size: animation.file_size,
+            fileTgUid: animation.file_unique_id,
+            fileSize: animation.file_size,
             duration: animation.duration,
-            mime_type: animation.mime_type,
-            file_name: animation.file_name,
+            mimeType: animation.mime_type,
+            fileName: animation.file_name,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: animation.file_id,
+            attachmentId: attachment.id,
+            fileTgId: animation.file_id,
             ...options,
         });
     }
@@ -253,15 +243,15 @@ export class HoloService {
     async createLivePhotoAttachment(livePhoto: LivePhoto, options: AttachmentCreationOptions) {
         const attachment = await this.attachmentRepository.upsert({
             type: ATTACHMENT_TYPE.LIVE_PHOTO,
-            file_tg_uid: livePhoto.file_unique_id,
-            file_size: livePhoto.file_size,
+            fileTgUid: livePhoto.file_unique_id,
+            fileSize: livePhoto.file_size,
             duration: livePhoto.duration,
-            mime_type: livePhoto.mime_type,
+            mimeType: livePhoto.mime_type,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: livePhoto.file_id,
+            attachmentId: attachment.id,
+            fileTgId: livePhoto.file_id,
             ...options,
         });
     }
@@ -273,13 +263,13 @@ export class HoloService {
 
         const attachment = await this.attachmentRepository.upsert({
             type: stickerType,
-            file_tg_uid: sticker.file_unique_id,
-            file_size: sticker.file_size,
+            fileTgUid: sticker.file_unique_id,
+            fileSize: sticker.file_size,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: sticker.file_id,
+            attachmentId: attachment.id,
+            fileTgId: sticker.file_id,
             ...options,
         });
     }
@@ -287,15 +277,15 @@ export class HoloService {
     async createVideoAttachment(video: Video, options: AttachmentCreationOptions) {
         const attachment = await this.attachmentRepository.upsert({
             type: ATTACHMENT_TYPE.VIDEO,
-            file_tg_uid: video.file_unique_id,
-            file_size: video.file_size,
+            fileTgUid: video.file_unique_id,
+            fileSize: video.file_size,
             duration: video.duration,
-            mime_type: video.mime_type,
+            mimeType: video.mime_type,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: video.file_id,
+            attachmentId: attachment.id,
+            fileTgId: video.file_id,
             ...options,
         });
     }
@@ -303,91 +293,55 @@ export class HoloService {
     async createVideoNoteAttachment(videoNote: VideoNote, options: AttachmentCreationOptions) {
         const attachment = await this.attachmentRepository.upsert({
             type: ATTACHMENT_TYPE.VIDEO_NOTE,
-            file_tg_uid: videoNote.file_unique_id,
-            file_size: videoNote.file_size,
+            fileTgUid: videoNote.file_unique_id,
+            fileSize: videoNote.file_size,
             duration: videoNote.duration,
         });
 
         await this.attachmentToMessageRepository.upsert({
-            attachment_id: attachment.id,
-            file_tg_id: videoNote.file_id,
+            attachmentId: attachment.id,
+            fileTgId: videoNote.file_id,
             ...options,
         });
     }
 
-    async getFullMessage(chat_tg_id?: number, message_tg_id?: number) {
-        if (!chat_tg_id || !message_tg_id) return null;
+    async getFullMessage(chatTgId?: number, messageTgId?: number): Promise<FullMessageModel | null> {
+        if (!chatTgId || !messageTgId) return null;
 
-        const rows = await this.messageRepository.getMessage(chat_tg_id, message_tg_id);
+        const message = await this.messageRepository.getMessage(chatTgId, messageTgId);
 
-        if (!rows.length) return null;
-
-        return this.toFullMessage(rows);
+        return message ? this.toFullMessage(message) : null;
     }
 
     async getFullMessages(
-        chat_tg_id: number,
+        chatTgId: number,
         limit: number,
-        thread_tg_id: number | null,
+        threadTgId: number | null,
         offset: number = 0,
     ): Promise<FullMessageModel[]> {
-        const rows = await this.messageRepository.getMessages(chat_tg_id, { limit, offset, thread_tg_id });
+        const messages = await this.messageRepository.getMessages(chatTgId, { limit, offset, threadTgId });
 
-        if (!rows.length) return [];
-
-        return this.groupRows(rows).map((group) => this.toFullMessage(group));
+        return messages.map((message) => this.toFullMessage(message));
     }
 
     async getFullMessagesInDateRange(
-        chat_tg_id: number,
+        chatTgId: number,
         from: number,
         to: number,
-        thread_tg_id: number | null,
+        threadTgId: number | null,
     ): Promise<FullMessageModel[]> {
-        const rows = await this.messageRepository.getMessagesInDateRange(chat_tg_id, { from, to, thread_tg_id });
+        const messages = await this.messageRepository.getMessagesInDateRange(chatTgId, { from, to, threadTgId });
 
-        if (!rows.length) return [];
-
-        return this.groupRows(rows).map((group) => this.toFullMessage(group));
+        return messages.map((message) => this.toFullMessage(message));
     }
 
-    private groupRows(rows: any[]): any[][] {
-        const groups = new Map<number, any[]>();
-
-        for (const row of rows) {
-            const id = row.m_id as number;
-            const group = groups.get(id);
-            if (group) {
-                group.push(row);
-            } else {
-                groups.set(id, [row]);
-            }
-        }
-
-        return [...groups.values()];
-    }
-
-    private toFullMessage(rows: any[]): FullMessageModel {
-        const firstRow = rows[0];
-
-        const attachments = rows
-            .filter((row) => row.a_id != null)
-            .map((row) => {
-                const attachment = pickFromAlias<LinkedAttachmentModel>(row, 'a_', ATTACHMENT_COLS);
-                attachment.rel = pickFromAlias<AttachmentToMessageRecord>(row, 'atm_', ATTACHMENT_TO_MESSAGE_COLS);
-                return attachment;
-            });
-
-        const chat = new ChatModel(pickFromAlias<ChatRecord>(firstRow, 'c_', CHAT_COLS));
-        const user = new UserModel(pickFromAlias<UserRecord>(firstRow, 'u_', USER_COLS));
-        const message = new MessageModel(pickFromAlias<MessageRecord>(firstRow, 'm_', MESSAGE_COLS));
-
+    private toFullMessage({ chat, user, attachments, ...message }: MessageWithRelations): FullMessageModel {
         return {
-            ...message,
-            chat,
-            user,
-            attachments,
-        } as FullMessageModel;
+            ...new MessageModel(message),
+            chat: new ChatModel(chat),
+            user: new UserModel(user),
+            attachments: attachments.map(({ attachment, ...rel }) => ({ ...attachment, rel })),
+        };
     }
 
     markAsReply(messageId: number, repliedMessageId: number) {

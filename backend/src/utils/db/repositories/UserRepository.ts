@@ -1,34 +1,16 @@
-import type { Knex } from 'knex';
-
-export interface UserRecord {
-    id: number;
-    created_at: number;
-    updated_at: number;
-
-    tg_id: number;
-    is_bot: boolean;
-    first_name?: string;
-    last_name?: string;
-    username?: string;
-    language_code?: string;
-    spelledName?: string;
-    gender?: string;
-}
-
-export type NewUserRecord = Omit<UserRecord, 'id' | 'created_at' | 'updated_at'>;
+import type { Prisma, PrismaClient, User } from '../../../generated/prisma/client';
 
 export class UserRepository {
-    constructor(private readonly knex: Knex) {}
+    constructor(private readonly prisma: PrismaClient) {}
 
-    async upsert(payload: NewUserRecord, trx?: Knex.Transaction): Promise<UserRecord> {
-        const conn = trx ?? this.knex;
+    async upsert(data: Prisma.UserCreateManyInput, tx?: Prisma.TransactionClient): Promise<User> {
+        const conn = tx ?? this.prisma;
+        const { tgId, isBot, firstName, lastName, username, languageCode } = data;
 
-        const res = await conn('users')
-            .insert(payload)
-            .onConflict('tg_id')
-            .merge(['is_bot', 'first_name', 'last_name', 'username', 'language_code'])
-            .returning<UserRecord[]>('*');
-
-        return res[0];
+        return conn.user.upsert({
+            where: { tgId },
+            create: data,
+            update: { isBot, firstName, lastName, username, languageCode },
+        });
     }
 }

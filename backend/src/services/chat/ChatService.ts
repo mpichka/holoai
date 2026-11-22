@@ -1,10 +1,10 @@
 import type { Message } from 'node-telegram-bot-api';
+import type { User } from '../../generated/prisma/client';
 import type {
     AttachmentRepository,
     AttachmentToMessageRepository,
     ChatRepository,
     MessageRepository,
-    UserRecord,
     UserRepository,
 } from '../../utils/db/repositories';
 import type { Container } from '../../utils/di';
@@ -37,27 +37,27 @@ export class ChatService {
     async sendMessage(text: string, chatId: number, options: SendOptions = {}): Promise<Message> {
         const sent = await this.tg.sendMessage(text, chatId, options);
 
-        let user: UserRecord | null = null;
+        let user: User | null = null;
         if (sent.from) {
             user = await this.userRepository.upsert({
-                tg_id: sent.from.id,
-                is_bot: sent.from.is_bot,
-                first_name: sent.from.first_name,
-                last_name: sent.from.last_name,
+                tgId: sent.from.id,
+                isBot: sent.from.is_bot,
+                firstName: sent.from.first_name,
+                lastName: sent.from.last_name,
                 username: sent.from.username,
-                language_code: sent.from.language_code,
+                languageCode: sent.from.language_code,
             });
         }
 
         const chat = await this.chatRepository.upsert({
-            tg_id: sent.chat.id,
+            tgId: sent.chat.id,
             type: sent.chat.type,
             title: sent.chat.title,
-            first_name: sent.chat.first_name,
-            last_name: sent.chat.last_name,
+            firstName: sent.chat.first_name,
+            lastName: sent.chat.last_name,
             username: sent.chat.username,
-            is_forum: Boolean(sent.chat.is_forum),
-            is_direct_messages: Boolean(sent.chat.is_direct_messages),
+            isForum: Boolean(sent.chat.is_forum),
+            isDirectMessages: Boolean(sent.chat.is_direct_messages),
         });
 
         let replyToId: number | undefined;
@@ -67,12 +67,12 @@ export class ChatService {
 
         if (user) {
             await this.messageRepository.upsert({
-                chat_id: chat.id,
-                user_id: user.id,
-                message_tg_id: sent.message_id,
-                thread_tg_id: sent.message_thread_id,
-                reply_to_id: replyToId,
-                sent_at: sent.date,
+                chatId: chat.id,
+                userId: user.id,
+                messageTgId: sent.message_id,
+                threadTgId: sent.message_thread_id,
+                replyToId,
+                sentAt: sent.date,
                 text: sent.text || sent.caption,
             });
         }

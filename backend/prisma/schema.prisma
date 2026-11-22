@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           Int     @id @default(autoincrement())
+  createdAt    Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("created_at")
+  updatedAt    Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("updated_at")
+  tgId         BigInt  @unique(map: "users_tg_id_key") @map("tg_id")
+  isBot        Boolean @default(false) @map("is_bot")
+  firstName    String? @map("first_name")
+  lastName     String? @map("last_name")
+  username     String?
+  languageCode String? @map("language_code")
+  spelledName  String? @map("spelled_name")
+  gender       String?
+  messages     Message[]
+
+  @@map("users")
+}
+
+model Chat {
+  id                 Int     @id @default(autoincrement())
+  createdAt          Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("created_at")
+  updatedAt          Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("updated_at")
+  tgId               BigInt  @map("tg_id")
+  type               String
+  title              String?
+  firstName          String? @map("first_name")
+  lastName           String? @map("last_name")
+  username           String?
+  isForum            Boolean @default(false) @map("is_forum")
+  isDirectMessages   Boolean @default(false) @map("is_direct_messages")
+  messages           Message[]
+
+  @@unique([tgId], map: "chats_tg_id_key")
+  @@map("chats")
+}
+
+model Message {
+  id          Int     @id @default(autoincrement())
+  createdAt   Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("created_at")
+  updatedAt   Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("updated_at")
+  chatId      Int     @map("chat_id")
+  userId      Int     @map("user_id")
+  messageTgId Int     @map("message_tg_id")
+  threadTgId  Int?    @map("thread_tg_id")
+  replyToId   Int?    @map("reply_to_id")
+  sentAt      Int?    @map("sent_at")
+  text        String?
+  attachments AttachmentToMessage[]
+  chat        Chat @relation(fields: [chatId], references: [id])
+  user        User @relation(fields: [userId], references: [id])
+
+  @@unique([chatId, messageTgId], map: "idx_messages_ids_unique")
+  @@map("messages")
+}
+
+model Attachment {
+  id          Int     @id @default(autoincrement())
+  createdAt   Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("created_at")
+  updatedAt   Int     @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("updated_at")
+  type        Int
+  fileTgUid   String  @unique(map: "attachments_file_tg_uid_key") @map("file_tg_uid")
+  fileSize    Int?    @map("file_size")
+  mimeType    String? @map("mime_type")
+  fileName    String? @map("file_name")
+  duration    Int?
+  performer   String?
+  aiDescription String? @map("ai_description")
+  messages    AttachmentToMessage[]
+
+  @@map("attachments")
+}
+
+model AttachmentToMessage {
+  messageId    Int     @map("message_id")
+  attachmentId Int     @map("attachment_id")
+  fileTgId     String  @map("file_tg_id")
+  caption      String?
+  mediaGroupId String? @map("media_group_id")
+  message      Message    @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  attachment  Attachment @relation(fields: [attachmentId], references: [id], onDelete: Cascade)
+
+  @@id([messageId, attachmentId])
+  @@map("attachments_to_messages")
+}

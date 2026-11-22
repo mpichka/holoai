@@ -2,9 +2,8 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
+import type { User } from '../src/generated/prisma/client';
 import { Database } from '../src/utils/db';
-import { type ChatRecord } from '../src/utils/db/repositories/ChatRepository';
-import { type UserRecord } from '../src/utils/db/repositories/UserRepository';
 import type { Container } from '../src/utils/di';
 import { LoggerFactory } from '../src/utils/logger';
 import { normalizeChatType, parseTgId } from './utils/archive';
@@ -16,7 +15,7 @@ const logger = LoggerFactory.createLogger('Scripts:upload_chat_archive');
 const container = { LoggerFactory } as Container;
 const database = new Database(container);
 
-const userCache = new Map<number, UserRecord>();
+const userCache = new Map<number, User>();
 const messageCache = new Map<number, number>();
 
 async function script() {
@@ -49,60 +48,62 @@ async function script() {
     const messageRepository = database.messageRepository;
 
     try {
-        await database.knex.transaction(async (t) => {
-            // TODO: transaction is probably broken, it still works though...
-
-            const chatRecord: ChatRecord = await chatRepository.upsert(
-                {
-                    tg_id: data.id,
-                    type: normalizeChatType(data.type),
-                    title: data.name,
-                    is_forum: true,
-                    is_direct_messages: false,
-                },
-                t,
-            );
-
-            for (const m of data.messages) {
-                if (m.type === 'service') continue;
-                if (!m.from_id) continue;
-
-                const parsed = parseTgId(m.from_id);
-                if (!parsed) continue;
-
-                let userRecord = userCache.get(parsed.tgId);
-
-                if (!userRecord) {
-                    userRecord = await userRepository.upsert(
-                        {
-                            tg_id: parsed.tgId,
-                            is_bot: parsed.isBot,
-                            first_name: m.from,
-                        },
-                        t,
-                    );
-
-                    userCache.set(parsed.tgId, userRecord);
-                    usersCount++;
-                }
-
-                const messageRecord = await messageRepository.upsert(
+        await database.prisma.$transaction(
+            async (t) => {
+                const chatRecord = await chatRepository.upsert(
                     {
-                        chat_id: chatRecord.id,
-                        user_id: userRecord.id,
-                        message_tg_id: m.id,
-                        thread_tg_id: undefined,
-                        reply_to_id: m.reply_to_message_id ? messageCache.get(m.reply_to_message_id) : undefined,
-                        sent_at: Number(m.date_unixtime),
-                        text: m.text,
+                        tgId: data.id,
+                        type: normalizeChatType(data.type),
+                        title: data.name,
+                        isForum: true,
+                        isDirectMessages: false,
                     },
                     t,
                 );
 
-                messageCache.set(m.id, messageRecord.id);
-                messagesCount++;
-            }
-        });
+                for (const m of data.messages) {
+                    if (m.type === 'service') continue;
+                    if (!m.from_id) continue;
+
+                    const parsed = parseTgId(m.from_id);
+                    if (!parsed) continue;
+
+                    let userRecord = userCache.get(parsed.tgId);
+
+                    if (!userRecord) {
+                        userRecord = await userRepository.upsert(
+                            {
+                                tgId: parsed.tgId,
+                                isBot: parsed.isBot,
+                                firstName: m.from,
+                            },
+                            t,
+                        );
+
+                        userCache.set(parsed.tgId, userRecord);
+                        usersCount++;
+                    }
+
+                    const messageRecord = await messageRepository.upsert(
+                        {
+                            chatId: chatRecord.id,
+                            userId: userRecord.id,
+                            messageTgId: m.id,
+                            threadTgId: undefined,
+                            replyToId: m.reply_to_message_id ? messageCache.get(m.reply_to_message_id) : undefined,
+                            sentAt: Number(m.date_unixtime),
+                            text: m.text,
+                        },
+                        t,
+                    );
+
+                    messageCache.set(m.id, messageRecord.id);
+                    messagesCount++;
+                }
+            },
+            // Default interactive transaction timeout (5s) is too short for large archives
+            { maxWait: 10_000, timeout: 10 * 60 * 1000 },
+        );
     } catch (error) {
         logger.error('Migration failed:', error);
         await database.close();
