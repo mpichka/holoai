@@ -102,6 +102,16 @@ export class Llama {
         return this.busy < this.poolSize;
     }
 
+    /**
+     * How many parallel requests a caller may run, given it already runs `own` of them.
+     * Free slots are added, requests waiting in the queue are subtracted. Never less than 1.
+     */
+    getConcurrencyLimit(own: number): number {
+        const limit = own + this.poolSize - this.busy - this.pool.length;
+
+        return Math.max(1, limit);
+    }
+
     get stats() {
         return {
             size: this.poolSize,

@@ -1,5 +1,6 @@
 import type winston from 'winston';
 import type { Container } from '../../core/di';
+import type { Llama } from '../../core/llama';
 import type { TelegramBot } from '../../core/tg';
 import type { LinkedAttachmentModel } from '../database';
 import { AttachmentType, STICKER_TYPES, type AttachmentRepository } from '../database/repositories';
@@ -15,8 +16,10 @@ export class FileDescriberService {
     logger: winston.Logger;
     attachmentRepository: AttachmentRepository;
     tg: TelegramBot;
+    llama: Llama;
 
     constructor(container: Container) {
+        this.llama = container.Llama;
         this.imageDescriber = new ImageDescriber(container.Llama);
         this.audioDescriber = new AudioDescriber(container.Llama);
         this.videoDescriber = new VideoDescriber(container.Llama);
@@ -26,7 +29,36 @@ export class FileDescriberService {
         this.tg = container.TelegramBot;
     }
 
-    async describe(attachment: LinkedAttachmentModel): Promise<LinkedAttachmentModel | undefined> {
+    /**
+     * Describes attachments in parallel, following the Llama pool load: every time a task finishes,
+     * the pool is re-checked and new tasks are started up to the current limit.
+     * Results are returned in the same order as the input; failed items are `undefined`.
+     */
+    async describe(attachments: LinkedAttachmentModel[]): Promise<Array<LinkedAttachmentModel | undefined>> {
+        const results: Array<LinkedAttachmentModel | undefined> = new Array(attachments.length);
+        const running = new Set<Promise<void>>();
+        let nextIndex = 0;
+
+        while (nextIndex < attachments.length || running.size) {
+            const limit = this.llama.getConcurrencyLimit(running.size);
+
+            while (nextIndex < attachments.length && running.size < limit) {
+                const index = nextIndex++;
+                const task: Promise<void> = this.describeOne(attachments[index]).then((result) => {
+                    results[index] = result;
+                    running.delete(task);
+                });
+
+                running.add(task);
+            }
+
+            await Promise.race(running);
+        }
+
+        return results;
+    }
+
+    private async describeOne(attachment: LinkedAttachmentModel): Promise<LinkedAttachmentModel | undefined> {
         if (attachment.aiDescription?.trim()) return attachment;
 
         try {

@@ -235,7 +235,6 @@ export class HoloService {
         reply?: FullMessageModel | null,
     ) {
         const attachments = reply?.attachments.filter((file) => types.includes(file.type));
-        const descriptions: string[] = [];
         const username = formatUserName(message.user);
         const ack = await this.ai.taskAcknowledge(task);
         const tgMessage = await this.replyTo(message, ack);
@@ -248,11 +247,13 @@ export class HoloService {
             return;
         }
 
-        for (const file of attachments) {
-            const described = await this.fileDescriberService.describe(file);
+        const described = await this.fileDescriberService.describe(attachments);
+        
+        const descriptions = described.reduce<string[]>((acc, file) => {
+            if (file?.aiDescription) acc.push(file.aiDescription);
 
-            if (described?.aiDescription) descriptions.push(described.aiDescription);
-        }
+            return acc;
+        }, []);
 
         if (!descriptions.length) {
             const failRes = await this.ai.taskFail(task);
@@ -412,9 +413,9 @@ export class HoloService {
 
             if (cachedLines) return cachedLines;
 
-            for (const attachment of chatMessage.attachments) {
-                const att = await this.fileDescriberService.describe(attachment);
+            const described = await this.fileDescriberService.describe(chatMessage.attachments);
 
+            for (const att of described) {
                 if (!att) continue;
 
                 const typeName = ATTACHMENT_TYPE_NAMES[att.type] ?? 'attachment';
