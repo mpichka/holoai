@@ -25,7 +25,7 @@ import type {
     Prisma,
     User as UserRecord,
 } from '../../generated/prisma/client';
-import { ChatModel, MessageModel, UserModel } from '../../utils/db';
+import { ChatModel, MessageModel, RequestModel, UserModel } from '../../utils/db';
 import {
     ATTACHMENT_TYPE,
     ATTACHMENT_TYPE_NAMES,
@@ -37,10 +37,12 @@ import {
     type ChatRepository,
     type MessageRepository,
     type MessageWithRelations,
+    type RequestRepository,
     type StickerType,
     type UserRepository,
 } from '../../utils/db/repositories';
 import type { Container } from '../../utils/di';
+import type { Trigger } from '../trigger/types';
 import { ChatSummaryMetadata } from './types';
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // One day
@@ -78,6 +80,7 @@ export class HoloService {
     messageRepository: MessageRepository;
     attachmentRepository: AttachmentRepository;
     attachmentToMessageRepository: AttachmentToMessageRepository;
+    requestRepository: RequestRepository;
 
     private userCache = new Map<number, CacheEntry<Prisma.UserCreateManyInput, UserRecord>>();
     private chatCache = new Map<number, CacheEntry<Prisma.ChatCreateManyInput, ChatRecord>>();
@@ -89,6 +92,7 @@ export class HoloService {
         this.messageRepository = db.messageRepository;
         this.attachmentRepository = db.attachmentRepository;
         this.attachmentToMessageRepository = db.attachmentToMessageRepository;
+        this.requestRepository = db.requestRepository;
     }
 
     async upsertTgUser(user?: User): Promise<UserRecord | null> {
@@ -346,6 +350,17 @@ export class HoloService {
 
     markAsReply(messageId: number, repliedMessageId: number) {
         return this.messageRepository.markAsReply(messageId, repliedMessageId);
+    }
+
+    async createRequest(messageId: number, trigger: Trigger): Promise<RequestModel> {
+        const record = await this.requestRepository.create({
+            messageId,
+            triggerReason: trigger.reason,
+            triggerCommand: trigger.command,
+            triggerArgs: trigger.args,
+        });
+
+        return new RequestModel(record);
     }
 
     deleteMessage(id: number) {

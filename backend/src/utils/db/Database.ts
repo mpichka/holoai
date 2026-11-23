@@ -6,6 +6,7 @@ import {
     AttachmentToMessageRepository,
     ChatRepository,
     MessageRepository,
+    RequestRepository,
     UserRepository,
 } from './repositories';
 
@@ -16,6 +17,7 @@ export class Database {
     userRepository: UserRepository;
     chatRepository: ChatRepository;
     messageRepository: MessageRepository;
+    requestRepository: RequestRepository;
     attachmentRepository: AttachmentRepository;
     attachmentToMessageRepository: AttachmentToMessageRepository;
 
@@ -47,6 +49,7 @@ export class Database {
         this.userRepository = new UserRepository(this.prisma);
         this.chatRepository = new ChatRepository(this.prisma);
         this.messageRepository = new MessageRepository(this.prisma);
+        this.requestRepository = new RequestRepository(this.prisma);
         this.attachmentRepository = new AttachmentRepository(this.prisma);
         this.attachmentToMessageRepository = new AttachmentToMessageRepository(this.prisma);
     }

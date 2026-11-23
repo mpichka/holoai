@@ -1,4 +1,12 @@
-import type { Attachment, AttachmentToMessage, Chat, Message, User } from '../../generated/prisma/client';
+import type {
+    Attachment,
+    AttachmentToMessage,
+    Chat,
+    Message,
+    Request,
+    RequestStatus,
+    User,
+} from '../../generated/prisma/client';
 import type { AttachmentType } from './repositories';
 import { optional } from './utils';
 
@@ -134,5 +142,39 @@ export class MessageModel {
         this.replyToId = optional(data.replyToId);
         this.sentAt = data.sentAt ?? 0;
         this.text = optional(data.text);
+    }
+}
+
+export class RequestModel {
+    id: number;
+    createdAt: number;
+    updatedAt: number;
+
+    messageId: number;
+
+    triggerReason: string;
+    triggerCommand?: string;
+    triggerArgs?: string;
+
+    status: RequestStatus;
+    error?: string;
+    startedAt?: number;
+    finishedAt?: number;
+    // Bot message sent in response to the request
+    responseId?: number;
+
+    constructor(data: Request) {
+        this.id = data.id;
+        this.createdAt = data.createdAt;
+        this.updatedAt = data.updatedAt;
+        this.messageId = data.messageId;
+        this.triggerReason = data.triggerReason;
+        this.triggerCommand = optional(data.triggerCommand);
+        this.triggerArgs = optional(data.triggerArgs);
+        this.status = data.status;
+        this.error = optional(data.error);
+        this.startedAt = optional(data.startedAt);
+        this.finishedAt = optional(data.finishedAt);
+        this.responseId = optional(data.responseId);
     }
 }

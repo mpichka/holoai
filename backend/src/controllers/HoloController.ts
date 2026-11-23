@@ -142,20 +142,25 @@ export class HoloController {
 
         if (!trigger) return; // skip unrelated messages
 
-        void this.processMessage(trigger, message, repliedMessage).catch((err) => this.logger.error(err));
+        // Processing is deferred to background workers that consume the requests queue
+        const request = await this.holoService.createRequest(message.id, trigger);
+
+        this.logger.info(`queued -m ${message.id} -req ${request.id} -r ${JSON.stringify(trigger)}`);
     }
 
     async processMessage(trigger: Trigger, message: FullMessageModel, repliedMessage: FullMessageModel | null) {
-        await this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
-        const typing = setInterval(() => {
-            this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
-        }, ACTION_RESEND_TIMEOUT);
+        // await this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
+        // const typing = setInterval(() => {
+        //     this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
+        // }, ACTION_RESEND_TIMEOUT);
+
+        // TODO: add queue
 
         try {
             await this.generateReply(trigger, message, repliedMessage);
         } finally {
             this.chatService.action(message.chat.tgId, CHAT_ACTION.TYPING, message.threadTgId);
-            clearInterval(typing);
+            // clearInterval(typing);
         }
     }
 

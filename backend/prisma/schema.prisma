@@ -54,11 +54,45 @@ model Message {
   sentAt      Int?    @map("sent_at")
   text        String?
   attachments AttachmentToMessage[]
+  requests    Request[] @relation("RequestMessage")
+  responses   Request[] @relation("RequestResponse")
   chat        Chat @relation(fields: [chatId], references: [id])
   user        User @relation(fields: [userId], references: [id])
 
   @@unique([chatId, messageTgId], map: "idx_messages_ids_unique")
   @@map("messages")
+}
+
+enum RequestStatus {
+  pending
+  processing
+  done
+  failed
+  skipped
+
+  @@map("request_status")
+}
+
+model Request {
+  id             Int           @id @default(autoincrement())
+  createdAt      Int           @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("created_at")
+  updatedAt      Int           @default(dbgenerated("(EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::integer)")) @map("updated_at")
+  messageId      Int           @map("message_id")
+  triggerReason  String        @map("trigger_reason")
+  triggerCommand String?       @map("trigger_command")
+  triggerArgs    String?       @map("trigger_args")
+  status         RequestStatus @default(pending)
+  error          String?
+  startedAt      Int?          @map("started_at")
+  finishedAt     Int?          @map("finished_at")
+  responseId     Int?          @map("response_id")
+  message        Message       @relation("RequestMessage", fields: [messageId], references: [id], onDelete: Cascade)
+  response       Message?      @relation("RequestResponse", fields: [responseId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt], map: "idx_requests_status_created_at")
+  @@index([messageId], map: "idx_requests_message_id")
+  @@index([responseId], map: "idx_requests_response_id")
+  @@map("requests")
 }
 
 model Attachment {
