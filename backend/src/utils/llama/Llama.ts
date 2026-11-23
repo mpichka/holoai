@@ -1,4 +1,5 @@
 import type winston from 'winston';
+import { Container } from '../di';
 import type {
     ChatCompletionRequest,
     ChatCompletionResponse,
@@ -28,10 +29,16 @@ export class Llama {
     completionUrl: string;
     logger: winston.Logger;
 
-    constructor(url: string, logger: winston.Logger) {
-        this.logger = logger;
-        this.baseUrl = url || 'http://localhost:8080/v1';
+    /** Number of parallel generations; must match llama.cpp `--parallel`. */
+    private readonly poolSize: number;
+    private busy = 0;
+    private readonly pool: Array<() => void> = [];
+
+    constructor(container: Container) {
+        this.logger = container.LoggerFactory.createLogger('Llama');
+        this.baseUrl = process.env.LLAMA_URL || 'http://localhost:8080/v1';
         this.completionUrl = `${this.baseUrl}/chat/completions`;
+        this.poolSize = Math.max(1, Math.floor(Number(process.env.LLAMA_PARALLEL)) || 4);
     }
 
     async health() {
@@ -52,6 +59,8 @@ export class Llama {
     }
 
     async request(messages: ChatMessage[], reasoning: Reasoning = 'hight', tools?: ToolDefinition[]) {
+        await this.acquire();
+
         const request: ChatCompletionRequest = {
             messages,
             tools,
@@ -84,6 +93,43 @@ export class Llama {
         } catch (err) {
             this.logger.error(`POST ${this.completionUrl} failed: ${describeError(err)}`);
             throw err;
+        } finally {
+            this.release();
+        }
+    }
+
+    isAvailable(): boolean {
+        return this.busy < this.poolSize;
+    }
+
+    get stats() {
+        return {
+            size: this.poolSize,
+            busy: this.busy,
+            free: this.poolSize - this.busy,
+            queued: this.pool.length,
+        };
+    }
+
+    private acquire(): Promise<void> {
+        if (this.busy < this.poolSize) {
+            this.busy++;
+            return Promise.resolve();
+        }
+
+        return new Promise((resolve) => {
+            this.pool.push(resolve);
+            this.logger.debug(`All ${this.poolSize} slots busy, request queued (${this.pool.length} waiting)`);
+        });
+    }
+
+    private release() {
+        const next = this.pool.shift();
+
+        if (next) {
+            next();
+        } else {
+            this.busy--;
         }
     }
 
