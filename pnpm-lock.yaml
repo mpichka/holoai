@@ -66,6 +66,9 @@ importers:
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
+      node-cron:
+        specifier: ^4.6.0
+        version: 4.6.0
       node-telegram-bot-api:
         specifier: 2.1.0
         version: 2.1.0
@@ -1507,6 +1510,10 @@ packages:
   netmask@2.1.1:
     resolution: {integrity: sha512-eonl3sLUha+S1GzTPxychyhnUzKyeQkZ7jLjKrBagJgPla13F+uQ71HgpFefyHgqrjEbCPkDArxYsjY8/+gLKA==}
     engines: {node: '>= 0.4.0'}
+
+  node-cron@4.6.0:
+    resolution: {integrity: sha512-Si/bzYiKRHOB8/a99T2+SDGN582ONDMSTlJr5oCkT6GtnqPjZ2s10eoQRYkW9ZHwjVxONL+W8Fb+qR0AHMQsdg==}
+    engines: {node: '>=20'}
 
   node-telegram-bot-api@2.1.0:
     resolution: {integrity: sha512-IXWp7Qzhwv21DqTw0g1CcppTb4TCzrQ949RVdtAmgiHAu3KbcRPyCAFXLaFAViqWDVx8GLZjnWiWJ7pWSj2PRA==}
@@ -3462,6 +3469,8 @@ snapshots:
       content-type: 2.1.0
 
   netmask@2.1.1: {}
+
+  node-cron@4.6.0: {}
 
   node-telegram-bot-api@2.1.0: {}
 

@@ -1,12 +1,15 @@
 import dotenv from 'dotenv';
 import http from 'http';
 import path from 'path';
-import { HoloController } from './controllers/HoloController';
-import { Database } from './utils/db';
+import { EVERY_MINUTE } from './constants';
+import type { HoloController } from './controllers/HoloController';
+import { RequestExecutor } from './tasks';
+import type { CronFactory } from './utils/cron';
+import type { Database } from './utils/db';
 import { DIContainerFactory } from './utils/di';
-import { LoggerFactory } from './utils/logger';
-import { Router } from './utils/router';
-import { TelegramBot } from './utils/tg';
+import type { LoggerFactory } from './utils/logger';
+import type { Router } from './utils/router';
+import type { TelegramBot } from './utils/tg';
 
 dotenv.config({ path: path.join(process.cwd(), '.env') });
 
@@ -25,6 +28,10 @@ async function bootstrap() {
 
     const holo = container.resolve<HoloController>('HoloController');
 
+    const cron = container.resolve<CronFactory>('CronFactory');
+
+    cron.registerTask(RequestExecutor, EVERY_MINUTE);
+
     tg.addHandler(holo.handleTgMessage.bind(holo));
 
     const server = http.createServer(router);
@@ -40,6 +47,7 @@ async function bootstrap() {
 
         logger.info('Graceful shutdown started... (press Ctrl+C again to force)');
 
+        cron.stopAll();
         await tg.stop();
         server.close();
         await database.close();
@@ -55,6 +63,7 @@ async function bootstrap() {
     process.on('SIGINT', gracefulShutdown);
     process.on('SIGTERM', gracefulShutdown);
 
+    cron.startAll();
     await tg.start();
 
     server.listen(PORT, () => {

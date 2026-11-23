@@ -1,8 +1,9 @@
 import type { HoloController } from '../../controllers/HoloController';
-import { ChatService } from '../../services/chat/ChatService';
+import type { ChatService } from '../../services/chat/ChatService';
 import type { FileDescriberService } from '../../services/describer';
 import type { HoloAIService, HoloService } from '../../services/holo';
 import type { TriggerService } from '../../services/trigger';
+import type { CronFactory } from '../cron';
 import type { Database } from '../db';
 import type { Llama } from '../llama';
 import type { LoggerFactory } from '../logger';
@@ -15,6 +16,7 @@ export type Container = {
     Router: Router;
     Llama: Llama;
     TelegramBot: TelegramBot;
+    CronFactory: CronFactory;
 
     // controllers
     HoloController: HoloController;

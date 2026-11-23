@@ -4,6 +4,7 @@ import { ChatService } from '../../services/chat/ChatService';
 import { FileDescriberService } from '../../services/describer';
 import { HoloAIService, HoloService } from '../../services/holo';
 import { TriggerService } from '../../services/trigger';
+import { CronFactory } from '../cron';
 import { Database } from '../db';
 import { Llama } from '../llama';
 import { LoggerFactory } from '../logger';
@@ -44,6 +45,7 @@ export class DIContainerFactory {
             Router: awilix.asClass(Router, SINGLETON),
             Llama: awilix.asClass(Llama, SINGLETON),
             TelegramBot: awilix.asClass(TelegramBot, SINGLETON),
+            CronFactory: awilix.asClass(CronFactory, SINGLETON),
         });
 
         container.register({
