@@ -2,10 +2,11 @@ import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
 
+import { Database } from '../src/core/db';
+import type { Container } from '../src/core/di';
+import { LoggerFactory } from '../src/core/logger';
+import { DatabaseService } from '../src/shared/database';
 import type { User } from '../src/generated/prisma/client';
-import { Database } from '../src/utils/db';
-import type { Container } from '../src/utils/di';
-import { LoggerFactory } from '../src/utils/logger';
 import { normalizeChatType, parseTgId } from './utils/archive';
 import { ExportChat } from './utils/types';
 
@@ -14,6 +15,7 @@ dotenv.config({ path: path.join('..', '.env') });
 const logger = LoggerFactory.createLogger('Scripts:upload_chat_archive');
 const container = { LoggerFactory } as Container;
 const database = new Database(container);
+const databaseService = new DatabaseService({ ...container, Database: database });
 
 const userCache = new Map<number, User>();
 const messageCache = new Map<number, number>();
@@ -43,9 +45,9 @@ async function script() {
     let messagesCount = 0;
     let usersCount = 0;
 
-    const chatRepository = database.chatRepository;
-    const userRepository = database.userRepository;
-    const messageRepository = database.messageRepository;
+    const chatRepository = databaseService.chatRepository;
+    const userRepository = databaseService.userRepository;
+    const messageRepository = databaseService.messageRepository;
 
     try {
         await database.prisma.$transaction(

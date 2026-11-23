@@ -1,4 +1,7 @@
-import { SuccessDto } from '../dtos';
+import type { Container } from '../core/di';
+import type { Data, Routes } from '../core/router';
+import type { TelegramBot } from '../core/tg';
+import { SuccessDto } from './dtos';
 import {
     type TelegramDeleteBody,
     telegramDeleteBody,
@@ -8,10 +11,7 @@ import {
     TelegramReactBody,
     type TelegramSendBody,
     telegramSendBody,
-} from '../schemas';
-import type { Container } from '../utils/di';
-import type { Data, Routes } from '../utils/router';
-import type { TelegramBot } from '../utils/tg';
+} from './schemas';
 
 export class TelegramRoutes implements Routes {
     basePath = 'tg';

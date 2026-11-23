@@ -1,6 +1,0 @@
-export const MESSAGE_PROCESS_MULTIPLIER = 30;
-export const IMAGE_PROCESS_MULTIPLIER = 5;
-export const AUDIO_PROCESS_MULTIPLIER = 1.5;
-export const VIDEO_PROCESS_MULTIPLIER = 3;
-
-export const SUMMARIZE_CHUNK_SIZE = 10;
