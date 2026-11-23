@@ -248,7 +248,7 @@ export class HoloService {
         }
 
         const described = await this.fileDescriberService.describe(attachments);
-        
+
         const descriptions = described.reduce<string[]>((acc, file) => {
             if (file?.aiDescription) acc.push(file.aiDescription);
 
@@ -360,7 +360,13 @@ export class HoloService {
             (fragment) => `<blockquote>${fragment}</blockquote>`,
         );
 
-        await this.editMessage(first, chatId, tgMessage.message_id, { parseMode: 'HTML' });
+        await this.deleteMessage(chatId, tgMessage.message_id);
+
+        await this.sendMessage(first, chatId, {
+            messageThreadId: message.threadTgId,
+            replyToMessageId: message.messageTgId,
+            parseMode: 'HTML',
+        });
 
         for (const fragment of rest) {
             await this.sendMessage(fragment, chatId, {
