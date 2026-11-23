@@ -16,8 +16,7 @@
         "m:status": "pnpm --filter @holoai/backend m:status",
         "prisma": "pnpm --filter @holoai/backend exec prisma",
         "prisma:generate": "pnpm --filter @holoai/backend prisma:generate",
-        "scripts:upload-chat-archive": "pnpm --filter @holoai/backend build && node backend/dist/scripts/uploadChatArchive.js",
-        "scripts:migrate-sqlite-to-postgres": "pnpm --filter @holoai/backend build && node backend/dist/scripts/migrateSqliteToPostgres.js"
+        "scripts:upload-chat-archive": "pnpm --filter @holoai/backend build && node backend/dist/scripts/uploadChatArchive.js"
     },
     "engines": {
         "node": ">=24.14.0 <25.0.0",
