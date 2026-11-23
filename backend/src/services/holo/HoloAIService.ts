@@ -37,15 +37,11 @@ import { type ChatSummaryMetadata, type Command, type SummarizeScope } from './t
 import { formatEstimatedDuration, p } from './utils';
 
 export class HoloAIService {
-    // Multimodal, for quick analysis
-    llamaM: Llama;
-    // Text-rich, for nice message
-    llamaT: Llama;
+    llama: Llama;
     logger: winston.Logger;
 
     constructor(container: Container) {
-        this.llamaM = container.LlamaM;
-        this.llamaT = container.LlamaT;
+        this.llama = container.Llama;
         this.logger = container.LoggerFactory.createLogger('HoloAI');
     }
 
@@ -75,7 +71,7 @@ export class HoloAIService {
             attachments: getAttachmentSummary(message.attachments),
         };
 
-        const res = await this.llamaM.request([
+        const res = await this.llama.request([
             {
                 role: 'system',
                 content: MESSAGE_CLASSIFIER_IDENTITY,
@@ -109,7 +105,7 @@ export class HoloAIService {
             }
         }
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -148,7 +144,7 @@ export class HoloAIService {
             }
         }
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -168,7 +164,7 @@ export class HoloAIService {
     async failToDeleteReply(old = false): Promise<string> {
         const userPrompt = old ? FAIL_TO_DELETE_OLD_REPLY_USER_PROMPT : FAIL_TO_DELETE_REPLY_USER_PROMPT;
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -207,7 +203,7 @@ export class HoloAIService {
         }
         userPrompt += 'Refer to user in gender neutral tone.';
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -227,7 +223,7 @@ export class HoloAIService {
     async translateDescription(text?: string): Promise<string> {
         if (!text) return '';
 
-        const res = await this.llamaT.request([
+        const res = await this.llama.request([
             {
                 role: 'system',
                 content: TRANSLATE_DESCRIPTION_SYSTEM_PROMPT,
@@ -244,7 +240,7 @@ export class HoloAIService {
     async translate(text?: string, targetLanguage = 'Ukrainian'): Promise<string> {
         if (!text) return '';
 
-        const res = await this.llamaT.request([
+        const res = await this.llama.request([
             {
                 role: 'system',
                 content: TRANSLATE_SYSTEM_PROMPT,
@@ -261,7 +257,7 @@ export class HoloAIService {
     async rejectOverrideAttempt(text?: string): Promise<string> {
         if (!text) return '';
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -281,7 +277,7 @@ export class HoloAIService {
     async rejectUnacceptable(text?: string): Promise<string> {
         if (!text) return '';
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -307,7 +303,7 @@ export class HoloAIService {
         const now = new Date();
 
         try {
-            const res = await this.llamaM.request(
+            const res = await this.llama.request(
                 [
                     {
                         role: 'system',
@@ -364,7 +360,7 @@ export class HoloAIService {
         if (!request) return 'Ukrainian';
 
         try {
-            const res = await this.llamaM.request(
+            const res = await this.llama.request(
                 [
                     {
                         role: 'system',
@@ -393,7 +389,7 @@ export class HoloAIService {
 
         if (!chunk.length) return;
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -413,7 +409,7 @@ export class HoloAIService {
     async summarizeEstimate(meta: ChatSummaryMetadata): Promise<string> {
         const estimate = `Messages count: ${meta.messagesCount}. Approximate estimate: ${formatEstimatedDuration(meta.estimate)}`;
 
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',
@@ -431,7 +427,7 @@ export class HoloAIService {
     }
 
     async summarizeTranscripts(transcripts: string[]): Promise<string> {
-        const res = await this.llamaT.request(
+        const res = await this.llama.request(
             [
                 {
                     role: 'system',

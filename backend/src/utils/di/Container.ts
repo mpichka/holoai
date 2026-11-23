@@ -13,8 +13,7 @@ export type Container = {
     LoggerFactory: typeof LoggerFactory;
     Database: Database;
     Router: Router;
-    LlamaM: Llama;
-    LlamaT: Llama;
+    Llama: Llama;
     TelegramBot: TelegramBot;
 
     // controllers
