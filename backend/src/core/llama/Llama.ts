@@ -112,6 +112,43 @@ export class Llama {
         return Math.max(1, limit);
     }
 
+    /**
+     * Runs `worker` over `items` in parallel, following the pool load: every time a task finishes,
+     * the pool is re-checked and new tasks are started up to the current limit.
+     * Results are returned in the same order as the input.
+     * If a worker throws, no new tasks are started and the first error is rethrown once running tasks settle.
+     */
+    async runConcurrently<T, R>(items: T[], worker: (item: T, index: number) => Promise<R>): Promise<R[]> {
+        const results: R[] = new Array(items.length);
+        const running = new Set<Promise<void>>();
+        let nextIndex = 0;
+        let failure: { error: unknown } | undefined;
+
+        while ((nextIndex < items.length && !failure) || running.size) {
+            const limit = this.getConcurrencyLimit(running.size);
+
+            while (nextIndex < items.length && !failure && running.size < limit) {
+                const index = nextIndex++;
+                const task: Promise<void> = worker(items[index], index)
+                    .then((result) => {
+                        results[index] = result;
+                    })
+                    .catch((error: unknown) => {
+                        failure ??= { error };
+                    })
+                    .finally(() => running.delete(task));
+
+                running.add(task);
+            }
+
+            await Promise.race(running);
+        }
+
+        if (failure) throw failure.error;
+
+        return results;
+    }
+
     get stats() {
         return {
             size: this.poolSize,

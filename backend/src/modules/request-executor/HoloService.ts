@@ -1,6 +1,7 @@
 import type { Message } from 'node-telegram-bot-api';
 import type winston from 'winston';
 import type { Container } from '../../core/di';
+import type { Llama } from '../../core/llama';
 import type { SendOptions, TelegramBot } from '../../core/tg';
 import { COMMAND, type CommandTypes, type Trigger, type TriggerReason } from '../../shared/constants';
 import type { FileDescriberService } from '../../shared/describer';
@@ -32,6 +33,7 @@ export class HoloService {
     ai: AIService;
     fileDescriberService: FileDescriberService;
     tg: TelegramBot;
+    llama: Llama;
     logger: winston.Logger;
 
     constructor(container: Container) {
@@ -39,6 +41,7 @@ export class HoloService {
         this.ai = new AIService(container);
         this.fileDescriberService = container.FileDescriberService;
         this.tg = container.TelegramBot;
+        this.llama = container.Llama;
         this.logger = container.LoggerFactory.createLogger('Holo');
     }
 
@@ -407,21 +410,36 @@ export class HoloService {
         return { messagesCount: messages.length, estimate };
     }
 
-    /** Converts chat messages into per-chunk AI transcripts. */
+    /**
+     * Converts chat messages into per-chunk AI transcripts.
+     * All attachments are described in one parallel batch first, then chunks are summarized in parallel;
+     * both phases follow the Llama pool load. Transcripts keep the chronological chunk order.
+     */
     private async transcribeChat(messages: FullMessageModel[]): Promise<string[]> {
-        const transcripts: string[] = [];
         const messagesById = new Map(messages.map((chatMessage) => [chatMessage.id, chatMessage]));
-        const attachmentLinesByMessageId = new Map<number, string[]>();
+        const attachmentLinesByMessageId = await this.describeChatAttachments(messages);
+        const chunksLines = chunk(messages, SUMMARIZE_CHUNK_SIZE).map((messagesChunk) =>
+            this.buildChunkLines(messagesChunk, messagesById, attachmentLinesByMessageId),
+        );
+        const transcripts = await this.llama.runConcurrently(chunksLines, (lines) =>
+            this.ai.summarizeMessagesChunk(lines),
+        );
 
-        const getAttachmentLines = async (chatMessage: FullMessageModel) => {
-            const cachedLines = attachmentLinesByMessageId.get(chatMessage.id);
-            const attachmentLines: string[] = [];
+        return transcripts.filter((transcript): transcript is string => !!transcript);
+    }
 
-            if (cachedLines) return cachedLines;
+    /** Describes every attachment of the chat in one parallel batch and formats them per message. */
+    private async describeChatAttachments(messages: FullMessageModel[]): Promise<Map<number, string[]>> {
+        const attachments = messages.flatMap((chatMessage) => chatMessage.attachments);
+        const described = await this.fileDescriberService.describe(attachments);
+        const linesByMessageId = new Map<number, string[]>();
+        let offset = 0;
 
-            const described = await this.fileDescriberService.describe(chatMessage.attachments);
+        for (const chatMessage of messages) {
+            const count = chatMessage.attachments.length;
+            const lines: string[] = [];
 
-            for (const att of described) {
+            for (const att of described.slice(offset, offset + count)) {
                 if (!att) continue;
 
                 const typeName = ATTACHMENT_TYPE_NAMES[att.type] ?? 'attachment';
@@ -433,49 +451,49 @@ export class HoloService {
 
                 if (att.aiDescription?.trim()) attachmentLine += `\n${att.aiDescription.trim()}`;
 
-                attachmentLines.push(attachmentLine);
+                lines.push(attachmentLine);
             }
 
-            attachmentLinesByMessageId.set(chatMessage.id, attachmentLines);
-
-            return attachmentLines;
-        };
-
-        for (const messagesChunk of chunk(messages, SUMMARIZE_CHUNK_SIZE)) {
-            const lines: string[] = [];
-
-            for (const chatMessage of messagesChunk) {
-                const time = toLocalTime(chatMessage.sentAt);
-                const sender = formatUserName(chatMessage.user);
-                const gender = formatGender(chatMessage.user);
-                const text = chatMessage.text?.trim() ?? '<empty_message>';
-                const repliedMessage = chatMessage.replyToId ? messagesById.get(chatMessage.replyToId) : undefined;
-                let replyContext = '';
-
-                if (repliedMessage) {
-                    const repliedText = repliedMessage.text?.trim() ?? '<empty_message>';
-                    const repliedAttachments = await getAttachmentLines(repliedMessage);
-                    let attachmentContext = '';
-
-                    if (repliedAttachments.length) {
-                        attachmentContext = `; attachments: ${repliedAttachments.join('; ')}`;
-                    }
-
-                    replyContext = `reply to ${formatUserName(repliedMessage.user)}: ${repliedText}${attachmentContext}`;
-                }
-
-                lines.push(`time: ${time}, sender: ${sender}, gender: ${gender}, ${replyContext}, message: ${text}`);
-
-                const attachments = await getAttachmentLines(chatMessage);
-
-                lines.push(...attachments);
-            }
-
-            const transcript = await this.ai.summarizeMessagesChunk(lines);
-
-            if (transcript) transcripts.push(transcript);
+            linesByMessageId.set(chatMessage.id, lines);
+            offset += count;
         }
 
-        return transcripts;
+        return linesByMessageId;
+    }
+
+    /** Builds the transcript lines of a single chunk of messages. */
+    private buildChunkLines(
+        messagesChunk: FullMessageModel[],
+        messagesById: Map<number, FullMessageModel>,
+        attachmentLinesByMessageId: Map<number, string[]>,
+    ): string[] {
+        const lines: string[] = [];
+
+        for (const chatMessage of messagesChunk) {
+            const time = toLocalTime(chatMessage.sentAt);
+            const sender = formatUserName(chatMessage.user);
+            const gender = formatGender(chatMessage.user);
+            const text = chatMessage.text?.trim() ?? '<empty_message>';
+            const repliedMessage = chatMessage.replyToId ? messagesById.get(chatMessage.replyToId) : undefined;
+            const attachments = attachmentLinesByMessageId.get(chatMessage.id) ?? [];
+            let replyContext = '';
+
+            if (repliedMessage) {
+                const repliedText = repliedMessage.text?.trim() ?? '<empty_message>';
+                const repliedAttachments = attachmentLinesByMessageId.get(repliedMessage.id) ?? [];
+                let attachmentContext = '';
+
+                if (repliedAttachments.length) {
+                    attachmentContext = `; attachments: ${repliedAttachments.join('; ')}`;
+                }
+
+                replyContext = `reply to ${formatUserName(repliedMessage.user)}: ${repliedText}${attachmentContext}`;
+            }
+
+            lines.push(`time: ${time}, sender: ${sender}, gender: ${gender}, ${replyContext}, message: ${text}`);
+            lines.push(...attachments);
+        }
+
+        return lines;
     }
 }

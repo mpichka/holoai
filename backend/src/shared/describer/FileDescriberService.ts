@@ -35,27 +35,7 @@ export class FileDescriberService {
      * Results are returned in the same order as the input; failed items are `undefined`.
      */
     async describe(attachments: LinkedAttachmentModel[]): Promise<Array<LinkedAttachmentModel | undefined>> {
-        const results: Array<LinkedAttachmentModel | undefined> = new Array(attachments.length);
-        const running = new Set<Promise<void>>();
-        let nextIndex = 0;
-
-        while (nextIndex < attachments.length || running.size) {
-            const limit = this.llama.getConcurrencyLimit(running.size);
-
-            while (nextIndex < attachments.length && running.size < limit) {
-                const index = nextIndex++;
-                const task: Promise<void> = this.describeOne(attachments[index]).then((result) => {
-                    results[index] = result;
-                    running.delete(task);
-                });
-
-                running.add(task);
-            }
-
-            await Promise.race(running);
-        }
-
-        return results;
+        return this.llama.runConcurrently(attachments, (attachment) => this.describeOne(attachment));
     }
 
     private async describeOne(attachment: LinkedAttachmentModel): Promise<LinkedAttachmentModel | undefined> {
