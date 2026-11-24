@@ -7,7 +7,7 @@ export class CronFactory {
     logger: winston.Logger;
     options: TaskOptions = {
         timezone: 'UTC',
-        noOverlap: true,
+        noOverlap: false,
     };
     tasks: Record<string, ScheduledTask> = {};
 
