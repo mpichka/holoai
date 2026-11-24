@@ -1,9 +1,9 @@
 export const COMMAND = Object.freeze({
-    SUMMARIZE: 'summarize',
-    TRANSCRIBE: 'transcribe',
-    TRANSLATE: 'translate',
-    DESCRIBE: 'describe',
-    DELETE: 'delete',
+    SUMMARIZE: 'h-sum',
+    TRANSCRIBE: 'h-audio',
+    TRANSLATE: 'h-trans',
+    DESCRIBE: 'h-desc',
+    DELETE: 'h-del',
 });
 
 export const COMMANDS = Object.values(COMMAND);

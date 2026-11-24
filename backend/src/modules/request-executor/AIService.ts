@@ -33,7 +33,7 @@ import {
     TRANSLATE_DESCRIPTION_SYSTEM_PROMPT,
     TRANSLATE_SYSTEM_PROMPT,
 } from './prompts';
-import { type ChatSummaryMetadata, type Command, type SummarizeScope } from './types';
+import { type ChatSummaryMetadata, type Command, type SummarizeScope, type TranscriptMessage } from './types';
 import { formatEstimatedDuration, p } from './utils';
 
 export class AIService {
@@ -384,11 +384,10 @@ export class AIService {
         }
     }
 
-    async summarizeMessagesChunk(lines: string[]): Promise<string | undefined> {
-        const chunk = lines.join('\n');
+    async summarizeMessagesChunk(messages: TranscriptMessage[]): Promise<string | undefined> {
+        if (!messages.length) return;
 
-        if (!chunk.length) return;
-
+        const chunk = JSON.stringify(messages);
         const res = await this.llama.request(
             [
                 {
